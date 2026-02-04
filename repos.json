@@ -1,0 +1,35 @@
+{
+  "description": "Configuracion de repositorios GitHub",
+  "authentication": {
+    "type": "token",
+    "token_env_var": "GITHUB_TOKEN",
+    "instructions": "Establece la variable de entorno GITHUB_TOKEN con tu token personal de GitHub. Para repos privados es OBLIGATORIO."
+  },
+  "repositories": [
+    {
+      "url": "https://github.com/omarmohamedluis/acciones-reaper.git",
+      "name": "acciones-reaper",
+      "private": true
+    },
+    {
+      "url": "https://github.com/omarmohamedluis/omi_reaper_lirycs.git",
+      "name": "omi_reaper_lirycs",
+      "private": true
+    },
+    {
+      "url": "https://github.com/omarmohamedluis/agent.git",
+      "name": "agent",
+      "private": true
+    },
+    {
+      "url": "https://github.com/omarmohamedluis/companionconfigs.git",
+      "name": "companionconfigs",
+      "private": true
+    },
+    {
+      "url": "https://github.com/omarmohamedluis/disguise_omiweb_layer",
+      "name": "d3_player",
+      "private": true
+    }
+  ]
+}
