@@ -1,0 +1,76 @@
+PC D3:
+
+
+creative cloud (winget)
+D3
+
+VSC (winget)
+ffmpeg (winget)
+wireshark (winget)
+chrome (winget)
+power toys (winget)
+
+
+timecodemonitor (https://timecodesync.com/monitor/)
+ffs (https://freefilesync.org/download.php)
+notch LC plugging (https://notchlc.notch.one/#download)
+realtek ethernet diagnostic utility (https://www.realtek.com/Download/List?cate_id=584)
+
+
+
+repos:
+
+https://github.com/omarmohamedluis/disguise_omiweb_layer
+
+
+
+
+
+
+
+
+
+
+
+pc config:
+
+antigraviti (winget)
+advanced ip scanner (winget)
+chrome (winget)
+companion (Winget)
+VSC (winget)
+ffmpeg (winget)
+github (winget)
+NDI (winget)
+node.js(winget)
+paket sender (winget)
+power toys (winget)
+raspberry pi imager (winget)
+realvnc (winget)
+reaper (winget)
+wireshark (winget)
+vnc viewer (winget) 
+
+
+
+mini keyboard (https://github.com/Jl4cTuk/MINI-KeyBoard-V02.1.1)
+x 32 edit (https://cdn.mediavalet.com/aunsw/musictribe/3vu8yRneAU6-aF0FD08DQg/K8yTgBRVKEWsp3m4Px8gCA/Original/X32-Edit_PC_4.4.zip)
+netgear engage (https://www.netgear.com/support/es/product/engage-controller)
+litware device controller (https://www.lightware.com/en/products/Software/lightware-device-controller#Downloads)
+ligthware updater (https://www.lightware.com/en/products/Software/lightware-device-updater)
+bm?
+dante controller (https://www.getdante.com/resources/software-downloads/#dante-controller)
+ffs (https://freefilesync.org/download.php)
+realtek ethernet diagnostic utility (https://www.realtek.com/Download/List?cate_id=584)
+artnet nominator (https://www.lightjams.com/artnetominator/#contributeSection)
+timecodemonitor (https://timecodesync.com/monitor/)
+controladora midi (https://intech.studio/us/software-downloads)
+
+
+
+repos
+
+https://github.com/omarmohamedluis/omi_reaper_lirycs.git
+https://github.com/omarmohamedluis/acciones-reaper.git
+https://github.com/omarmohamedluis/agent.git
+https://github.com/omarmohamedluis/companionconfigs.git

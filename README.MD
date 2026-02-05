@@ -1,214 +1,83 @@
-# PC Inicializador - Automatización de instalación limpia en Windows
+# PC Inicializador - Automatización de instalación para Windows
 
-Una suite automatizada de scripts batch para inicializar un PC con Windows limpio, instalando software esencial y clonando repositorios privados de GitHub.
+Una suite automatizada basada en **PowerShell** para inicializar un PC con Windows limpio, instalando software esencial y clonando repositorios privados de GitHub.
 
-**Flexible y reutilizable:** Añade o quita paquetes y repositorios simplemente editando `install.json` y `repos.json`. No requiere modificar los scripts.
+**Flexible y reutilizable:** Añade o quita paquetes y repositorios simplemente editando `install.json` y `repos.json`. No requiere modificar el código.
 
 ---
 
 ## 📋 Requisitos Previos
 
-Antes de ejecutar el maestro, verifica que tu PC cumpla con estos requisitos:
+Antes de ejecutar, verifica que tu PC cumpla con estos requisitos:
 
 ### **Sistema Operativo**
 - Windows 10 (versión 1809 o superior) o Windows 11
 - Acceso de **administrador** en la máquina
 
-### **Dependencias Críticas**
-
-#### 1. **Git para Windows**
-Necesario para clonar los repositorios privados.
-
-**Verificar si está instalado:**
-```powershell
-git --version
-```
-
-**Si NO está instalado, descárgalo:**
-- Ir a: https://git-scm.com/download/win
-- Ejecutar el instalador `.exe`
-- Seguir los pasos con opciones por defecto
-- Reinicia la terminal/PowerShell después de instalar
-
-#### 2. **Winget** (Gestor de paquetes Windows)
-Incluido en Windows 11 por defecto. En Windows 10, debe instalarse:
-
-**Verificar si está instalado:**
-```powershell
-winget --version
-```
-
-**Si NO está instalado en Windows 10:**
-1. Ir a: https://aka.ms/getwinget
-2. Descargar e instalar la **App Installer** desde Microsoft Store
-3. O desde PowerShell (como admin):
-```powershell
-Invoke-WebRequest -Uri https://aka.ms/wingetcli -OutFile winget.msixbundle
-Add-AppxPackage -Path winget.msixbundle
-```
-
-#### 3. **PowerShell 5.1 o Superior**
-Incluido en Windows 10/11. Verificar:
-```powershell
-$PSVersionTable.PSVersion
-```
-
 ---
 
 ## 🚀 Cómo Ejecutar
 
-### **Opción 1: Línea de Comandos (Recomendado)**
+### **Opción 1: Doble Click (Más fácil)**
 
-1. Abre **PowerShell como Administrador**
-   - Click derecho en el menú Inicio
-   - Selecciona "Windows PowerShell (Admin)"
+1.  Abre la carpeta `pc inicializador`.
+2.  Haz doble click en el archivo:
+    `Run-Setup.bat`
+3.  Te pedirá permisos de administrador automáticamente.
 
-2. Navega al directorio donde descargaste los scripts:
-```powershell
-cd "C:\ruta\al\directorio\pc inicializador"
-```
+### **Opción 2: PowerShell**
 
-3. Ejecuta el maestro:
-```batch
-.\00-maestro.bat
-```
+1.  Abre PowerShell como Administrador.
+2.  Navega a la carpeta:
+    ```powershell
+    cd "C:\ruta\al\directorio\pc inicializador"
+    ```
+3.  Ejecuta el script maestro:
+    ```powershell
+    .\Setup-PC.ps1
+    ```
 
-### **Opción 2: Explorador de Archivos**
+### **Menú Interactivo**
 
-1. Navega a la carpeta `pc inicializador`
-2. Click derecho sobre `00-maestro.bat`
-3. Selecciona "Ejecutar como administrador"
+Al iniciar, el script te preguntará qué **Perfil** deseas usar:
+1.  **D3 (Media Server)**: Carga `install_d3.json`.
+2.  **CONTROL (Operator)**: Carga `install_control.json`.
 
-### **Menú Interactivo con Validación**
+Luego verás el menú de acciones:
 
-El maestro presenta un menú inteligente que:
-- ✅ Verifica automáticamente si Git y Winget están instalados
-- ✅ Te guía si falta alguna dependencia
-- ✅ Permite elegir qué ejecutar:
-  - **Opción 1:** Solo Windows Update + Winget
-  - **Opción 2:** Solo instalar/actualizar software
-  - **Opción 3:** Solo clonar/actualizar repositorios
-  - **Opción 4:** Ejecutar todos los pasos
-  - **Opción 5:** Ver log de instalación
-  - **Opción 0:** Salir
-
-Esto permite **reutilizar el script** en cualquier momento. Por ejemplo, puedes ejecutarlo mensualmente para:
-- Instalar nuevos paquetes
-- Actualizar Windows
-- Clonar/actualizar repositorios privados
+-   **1. Windows Updates + Winget**: Inicializa el sistema.
+-   **2. Instalar Software**: Instala apps de Winget del perfil elegido.
+-   **3. Sincronizar Repositorios**: Clona repos del perfil elegido.
+-   **4. Open Manual Downloads**: Abre en el navegador todos los links de descarga manual (Drivers, Apps sin Winget) definidos en `links_*.json`.
+-   **5. Ejecutar TODO**: Secuencia completa.
+-   **7. Restart PC**: Reiniciar el equipo.
 
 ---
 
-## 📦 ¿Qué instala?
+## 📦 Configuración por Perfiles
 
-El sistema ejecuta **3 pasos principais**:
+Cada perfil tiene sus propios archivos de configuración:
 
-### **Paso 1: Windows Update + Winget Setup**
-- Instala/actualiza Windows Update
-- Configura winget como gestor de paquetes
-- Duración: ~5-15 minutos
+### Perfil D3
+-   `install_d3.json`: Apps de Winget (Adobe, Notch, etc).
+-   `repos_d3.json`: Repositorios para D3.
+-   `links_d3.json`: Links de descarga manual.
 
-### **Paso 2: Instalación de Software**
-Instala todos los paquetes desde `install.json` (actualmente **26 paquetes**):
-- **Audio/DAW:** Cockos REAPER
-- **Desarrollo:** Node.js 22, .NET SDK 8, Git
-- **Navegadores:** Google Chrome, Microsoft Edge
-- **Herramientas:** Wireshark, FFmpeg, Advanced IP Scanner, Bonjour, NDI Tools
-- **Utilidades:** Windows Terminal, VNC Viewer, Raspberry Pi Imager
-- **Librerías:** VCRedist (todas las versiones), UI.Xaml, VCLibs, CodeMeter
+### Perfil CONTROL
+-   `install_control.json`: Apps de Winget (Companion tools, Node, etc).
+-   `repos_control.json`: Repositorios para Control.
+-   `links_control.json`: Links de descarga manual (Companion, Lightware, etc).
 
-**Feedback visual:** 
-- Muestra el progreso en tiempo real: `[5/26] Instalando Node.js...`
-- Output completo de winget visible (sin silenciamiento)
-- Indicador de éxito/error para cada paquete
-
-**Flexible:** Añade/quita paquetes directamente en `install.json` sin modificar scripts.
-
-Duración: ~10-30 minutos (depende del ancho de banda)
-
-### **Paso 3: Clonar Repositorios GitHub**
-Descarga/actualiza repositorios privados desde `repos.json` (actualmente **5 repositorios**):
-- `acciones-reaper`
-- `omi_reaper_lirycs`
-- `agent`
-- `companionconfigs`
-- `disguise_omiweb_layer`
-
-**Feedback visual:**
-- Muestra progreso: `[2/5] Actualizando: omi_reaper_lirycs`
-- Distingue entre clonar (nuevo) y actualizar (existente)
-- Indicador de éxito/error para cada repo
-
-**Nota:** Se pedirá un **GitHub Personal Access Token** (PAT)
-- Los repos se descargarán a: `C:\Users\{Usuario}\Desktop\repositorios\`
-
-**Flexible:** Añade/quita repositorios directamente en `repos.json` sin modificar scripts.
-
-Duración: ~1-5 minutos
-
-## 📊 Mejoras de Experiencia de Usuario
-
-### **Validación Automática de Dependencias**
-- El maestro verifica Git y Winget al inicio
-- Te guía automáticamente si algo falta
-- Evita errores confusos más adelante
-
-### **Feedback Visual Mejorado**
-- Contadores de progreso: `[5/26] Instalando...`
-- Separadores visuales claros (===)
-- Indicadores de estado: `[OK]`, `[!]`, `[ERROR]`
-- Output de winget mostrado en tiempo real (sin silenciamiento)
-
-### **Mejor Manejo de Errores**
-- Los scripts validan dependencias ANTES de ejecutar
-- Muestra claramente qué falta y cómo solucionarlo
-- Distingue entre advertencias y errores críticos
-
-### **Resúmenes Informativos**
-- Al final de cada paso: resumen de éxitos/fallos
-- Ratio de paquetes instalados/repositorios clonados
-- Links al log para revisar detalles
-
----
-
-A diferencia de scripts desechables, **este sistema está diseñado para reutilizarse indefinidamente**:
-
-### **Modificar Paquetes a Instalar**
-Abre `install.json` y busca la sección `"Packages"`:
+**Ejemplo de `links_*.json`:**
 ```json
-{
-    "PackageIdentifier": "NombrePaquete.ID"
-}
+[
+  { "Name": "Bitfocus Companion", "Url": "https://bitfocus.io/companion" },
+  { "Name": "Drivers X32", "Url": "..." }
+]
 ```
-- **Añadir:** Añade una nueva entrada JSON
-- **Quitar:** Elimina la entrada del paquete
-- **Actualizar:** Modifica el nombre del paquete
 
-Los scripts leerán automáticamente la nueva lista.
-
-### **Modificar Repositorios a Clonar**
-Abre `repos.json` y busca la sección `"repositories"`:
-```json
-{
-    "url": "https://github.com/usuario/repo.git",
-    "name": "nombre-local",
-    "private": true
-}
-```
-- **Añadir:** Añade un nuevo repositorio
-- **Quitar:** Elimina la entrada del repo
-- **Actualizar:** Modifica la URL o nombre
-
-Los scripts leerán automáticamente la nueva lista.
-
-### **Casos de Uso Recurrentes**
-Puedes ejecutar el maestro mensualmente o cuando necesites:
-- ✅ **Windows Updates:** Solo opción 1
-- ✅ **Nuevos paquetes:** Modifica `install.json` → Opción 2
-- ✅ **Actualizar repos:** Solo opción 3
-- ✅ **Mantenimiento completo:** Opción 4 (todos los pasos)
-
----
+**Nota sobre Repos Privados:**
+Si tienes repositorios privados, el script te pedirá un **GitHub Personal Access Token (PAT)** si no encuentra credenciales guardadas. El token se guardará de forma segura en tus credenciales de Windows/Git.
 
 ### ¿Qué es un GitHub Personal Access Token (PAT)?
 Es una contraseña segura que permite acceder a repositorios privados sin usar tu contraseña real.
@@ -216,7 +85,7 @@ Es una contraseña segura que permite acceder a repositorios privados sin usar t
 ### **Cómo generar un PAT:**
 
 1. Ve a: https://github.com/settings/tokens
-2. Click en "Generate new token" → "Generate new token (classic)"
+2. Click en "Generate new token" -> "Generate new token (classic)"
 3. Dale un nombre: `PC Inicializador`
 4. Marca estos permisos:
    - ✅ `repo` (acceso a repositorios)
@@ -229,53 +98,6 @@ Cuando el script pida el token, pégalo y presiona Enter.
 - Requisito mínimo: **20 caracteres**
 - Se almacena de forma segura en: `C:\Users\{Usuario}\.git-credentials`
 
----
-
-## 📊 Archivos Generados
-
-Después de ejecutar `00-maestro.bat`:
-
-| Archivo | Descripción |
-|---------|-------------|
-| `install.log` | Registro completo de todas las operaciones |
-| `C:\Users\{Usuario}\Desktop\repositorios\` | Directorio con los 4 repos clonados |
-| `.git-credentials` | Credenciales seguras de Git (en perfil de usuario) |
-
----
-
-## ⚠️ Notas Importantes
-
-### **Limpieza Manual (Ya No Automática)**
-Los scripts **NO se auto-eliminan** para permitir reutilización. Si deseas limpiar después:
-```powershell
-# Eliminar los scripts
-Remove-Item "00-maestro.bat", "01-*.bat", "02-*.bat", "03-*.bat"
-
-# Eliminar el estado
-Remove-Item "estado.txt"
-
-# O eliminar todo el directorio
-Remove-Item . -Recurse
-```
-
-### **Reinicioss Automáticos**
-- Windows Update puede requerir uno o más reinicios
-- **NO es necesario esperar** el reinicio automático
-- Puedes ejecutar de nuevo el maestro en cualquier momento
-
-### **Conexión a Internet**
-- Requerida durante toda la ejecución
-- Especialmente importante para descargar paquetes de software
-
-### **Tiempo Total Esperado**
-- Con conexión de 50+ Mbps: **30-60 minutos**
-- Con conexión más lenta: **1-2 horas**
-
-### **En Caso de Errores**
-Si un paso falla:
-1. Revisa `install.log` (en Desktop) para detalles
-2. Corrige el problema (ej: conexión a internet, permisos)
-3. **Vuelve a ejecutar `00-maestro.bat`** - los scripts son idempotentes y pueden re-ejecutarse sin problemas
 
 ---
 
@@ -283,78 +105,13 @@ Si un paso falla:
 
 ```
 pc inicializador/
-├── 00-maestro.bat                    (Script principal orquestador)
-├── 01-windows-update-y-winget.bat    (Windows Update + Winget)
-├── 02-instalar-software.bat          (Instalación de 26 paquetes)
-├── 03-descargar-repositorios.bat     (Clonar repos privados)
-├── install.json                      (Lista de paquetes winget)
-├── repos.json                        (Metadata de repositorios)
-├── README.MD                         (Este archivo)
-└── estado.txt                        (Generado en ejecución - rastreo de progreso)
+├── Setup-PC.ps1       (Script principal PowerShell)
+├── Run-Setup.bat      (Lanzador fácil)
+├── install_d3.json    (Ejemplo config D3)
+├── install.log        (Log de ejecución)
+└── ... (otros jsons de perfil)
 ```
 
----
+## 📝 Logs
 
-## ✅ Validación Post-Instalación
-
-Después de completar la ejecución, verifica:
-
-```powershell
-# Verificar software instalado
-winget list
-
-# Verificar repositorios descargados
-Get-ChildItem $env:USERPROFILE\Desktop\repositorios
-
-# Verificar Token de Git almacenado
-cat $env:USERPROFILE\.git-credentials
-```
-
----
-
-## 🔒 Seguridad
-
-- Los scripts **NO** requieren conexión a servidores externos (excepto GitHub y winget)
-- Todos los tokens se almacenan **localmente** en `.git-credentials`
-- Los scripts son **autoautoLimpiable**: se eliminan a sí mismos después de completar
-- Se ejecutan con permisos de **administrador** necesarios solo para instalaciones del sistema
-
----
-
-## 📝 Logs y Debugging
-
-Todos los eventos se registran en `install.log`:
-
-```
-[2026-02-04 10:15:30] === EJECUTANDO PASO 1 ===
-[2026-02-04 10:15:35] Instalando PSWindowsUpdate...
-[2026-02-04 10:20:15] Windows Update completado
-[2026-02-04 10:20:20] === EJECUTANDO PASO 2 ===
-...
-```
-
-Para revisar el log después:
-```powershell
-notepad install.log
-```
-
----
-
-## 🤝 Soporte
-
-Si encuentras problemas:
-1. **Lee `install.log`** para detalles del error
-2. **Verifica requisitos previos** (Git, Winget, admin)
-3. **Revisa la conexión a internet**
-4. **Ejecuta nuevamente** - el script continuará desde el último paso completado
-
----
-
-## 📄 Licencia
-
-Scripts de automatización para configuración de PC limpio en Windows.
-
----
-
-**Última actualización:** Febrero 2026  
-**Versión:** 2.0 - Flexible y Reutilizable
+Todos los eventos se registran en `install.log`. Si algo falla, revisa este archivo para ver los errores detallados.

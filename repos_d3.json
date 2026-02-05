@@ -1,0 +1,10 @@
+{
+    "description": "Repositorios para Perfil D3",
+    "repositories": [
+        {
+            "url": "https://github.com/omarmohamedluis/disguise_omiweb_layer.git",
+            "name": "d3_player",
+            "private": true
+        }
+    ]
+}

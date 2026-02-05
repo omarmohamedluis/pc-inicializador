@@ -1,98 +1,86 @@
 {
-	"$schema" : "https://aka.ms/winget-packages.schema.2.0.json",
-	"CreationDate" : "2026-02-04T12:25:26.874-00:00",
-	"Sources" : 
-	[
+	"$schema": "https://aka.ms/winget-packages.schema.2.0.json",
+	"CreationDate": "2026-02-05T10:36:10.761-00:00",
+	"Sources": [
 		{
-			"Packages" : 
-			[
+			"Packages": [
 				{
-					"PackageIdentifier" : "Cockos.REAPER"
+					"PackageIdentifier": "Cockos.REAPER"
 				},
 				{
-					"PackageIdentifier" : "NagleCode.PacketSender"
+					"PackageIdentifier": "NagleCode.PacketSender"
 				},
 				{
-					"PackageIdentifier" : "Microsoft.VCRedist.2010.x64"
+					"PackageIdentifier": "NDI.NDITools"
 				},
 				{
-					"PackageIdentifier" : "NDI.NDITools"
+					"PackageIdentifier": "RealVNC.VNCViewer"
 				},
 				{
-					"PackageIdentifier" : "Wibu-Systems.CodeMeterRuntimeKit"
+					"PackageIdentifier": "RaspberryPiFoundation.RaspberryPiImager"
 				},
 				{
-					"PackageIdentifier" : "OpenJS.NodeJS.22"
+					"PackageIdentifier": "Apple.Bonjour"
 				},
 				{
-					"PackageIdentifier" : "RealVNC.VNCViewer"
+					"PackageIdentifier": "NDI.NDIRuntime"
 				},
 				{
-					"PackageIdentifier" : "Apple.Bonjour"
+					"PackageIdentifier": "OpenJS.NodeJS"
 				},
 				{
-					"PackageIdentifier" : "NDI.NDIRuntime"
+					"PackageIdentifier": "Adobe.CreativeCloud"
 				},
 				{
-					"PackageIdentifier" : "Google.Chrome.EXE"
+					"PackageIdentifier": "Google.Chrome.EXE"
 				},
 				{
-					"PackageIdentifier" : "Microsoft.Edge"
+					"PackageIdentifier": "WiresharkFoundation.Wireshark"
 				},
 				{
-					"PackageIdentifier" : "WiresharkFoundation.Wireshark"
+					"PackageIdentifier": "Famatech.AdvancedIPScanner"
 				},
 				{
-					"PackageIdentifier" : "Microsoft.VCRedist.2013.x64"
+					"PackageIdentifier": "Microsoft.PowerToys"
 				},
 				{
-					"PackageIdentifier" : "Microsoft.VCRedist.2015+.x86"
+					"PackageIdentifier": "Audinate.DanteVirtualSoundcard"
 				},
 				{
-					"PackageIdentifier" : "Famatech.AdvancedIPScanner"
+					"PackageIdentifier": "Microsoft.DotNet.SDK.8"
 				},
 				{
-					"PackageIdentifier" : "Microsoft.VCRedist.2015+.x64"
+					"PackageIdentifier": "Bitfocus.Companion"
 				},
 				{
-					"PackageIdentifier" : "Microsoft.VCRedist.2013.x86"
+					"PackageIdentifier": "Gyan.FFmpeg"
 				},
 				{
-					"PackageIdentifier" : "Audinate.DanteVirtualSoundcard"
+					"PackageIdentifier": "Google.Antigravity"
 				},
 				{
-					"PackageIdentifier" : "Microsoft.DotNet.SDK.8"
+					"PackageIdentifier": "Microsoft.AppInstaller"
 				},
 				{
-					"PackageIdentifier" : "ffmpeg"
+					"PackageIdentifier": "Microsoft.UI.Xaml.2.7"
 				},
 				{
-					"PackageIdentifier" : "RaspberryPiFoundation.RaspberryPiImager"
+					"PackageIdentifier": "Microsoft.UI.Xaml.2.8"
 				},
 				{
-					"PackageIdentifier" : "Microsoft.AppInstaller"
+					"PackageIdentifier": "Microsoft.VCLibs.Desktop.14"
 				},
 				{
-					"PackageIdentifier" : "Microsoft.UI.Xaml.2.7"
-				},
-				{
-					"PackageIdentifier" : "Microsoft.UI.Xaml.2.8"
-				},
-				{
-					"PackageIdentifier" : "Microsoft.VCLibs.Desktop.14"
-				},
-				{
-					"PackageIdentifier" : "Microsoft.WindowsTerminal"
+					"PackageIdentifier": "Microsoft.WindowsTerminal"
 				}
 			],
-			"SourceDetails" : 
-			{
-				"Argument" : "https://cdn.winget.microsoft.com/cache",
-				"Identifier" : "Microsoft.Winget.Source_8wekyb3d8bbwe",
-				"Name" : "winget",
-				"Type" : "Microsoft.PreIndexed.Package"
+			"SourceDetails": {
+				"Argument": "https://cdn.winget.microsoft.com/cache",
+				"Identifier": "Microsoft.Winget.Source_8wekyb3d8bbwe",
+				"Name": "winget",
+				"Type": "Microsoft.PreIndexed.Package"
 			}
 		}
 	],
-	"WinGetVersion" : "1.12.460"
+	"WinGetVersion": "1.12.460"
 }

@@ -1,0 +1,50 @@
+[
+    {
+        "Name": "Bitfocus Companion",
+        "Url": "https://bitfocus.io/companion"
+    },
+    {
+        "Name": "Mini Keyboard Driver",
+        "Url": "https://github.com/Jl4cTuk/MINI-KeyBoard-V02.1.1"
+    },
+    {
+        "Name": "X32 Edit",
+        "Url": "https://cdn.mediavalet.com/aunsw/musictribe/3vu8yRneAU6-aF0FD08DQg/K8yTgBRVKEWsp3m4Px8gCA/Original/X32-Edit_PC_4.4.zip"
+    },
+    {
+        "Name": "Netgear Engage",
+        "Url": "https://www.netgear.com/support/es/product/engage-controller"
+    },
+    {
+        "Name": "Lightware Device Controller",
+        "Url": "https://www.lightware.com/en/products/Software/lightware-device-controller#Downloads"
+    },
+    {
+        "Name": "Lightware Updater",
+        "Url": "https://www.lightware.com/en/products/Software/lightware-device-updater"
+    },
+    {
+        "Name": "Dante Controller",
+        "Url": "https://www.getdante.com/resources/software-downloads/#dante-controller"
+    },
+    {
+        "Name": "FreeFileSync",
+        "Url": "https://freefilesync.org/download.php"
+    },
+    {
+        "Name": "Realtek Ethernet Diagnostic",
+        "Url": "https://www.realtek.com/Download/List?cate_id=584"
+    },
+    {
+        "Name": "Artnet Nominator",
+        "Url": "https://www.lightjams.com/artnetominator/#contributeSection"
+    },
+    {
+        "Name": "Timecode Monitor",
+        "Url": "https://timecodesync.com/monitor/"
+    },
+    {
+        "Name": "Intech Studio MIDI",
+        "Url": "https://intech.studio/us/software-downloads"
+    }
+]

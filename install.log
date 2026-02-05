@@ -1,0 +1,106 @@
+﻿[2026-02-05 10:14:21] [HEADER] --- STARTING STEP 2: SOFTWARE INSTALLATION ---
+[2026-02-05 10:14:24] [ERROR] Failed to install: NagleCode.PacketSender (Exit Code: -1978335135)
+[2026-02-05 10:14:25] [ERROR] Failed to install: Microsoft.VCRedist.2010.x64 (Exit Code: -1978335135)
+[2026-02-05 10:14:26] [ERROR] Failed to install: NDI.NDITools (Exit Code: -1978335135)
+[2026-02-05 10:14:27] [ERROR] Failed to install: Wibu-Systems.CodeMeterRuntimeKit (Exit Code: -1978335135)
+[2026-02-05 10:14:28] [ERROR] Failed to install: OpenJS.NodeJS.22 (Exit Code: -1978335135)
+[2026-02-05 10:14:29] [ERROR] Failed to install: RealVNC.VNCViewer (Exit Code: -1978335135)
+[2026-02-05 10:14:30] [ERROR] Failed to install: Apple.Bonjour (Exit Code: -1978335135)
+[2026-02-05 10:14:31] [ERROR] Failed to install: Google.Chrome.EXE (Exit Code: -1978335135)
+[2026-02-05 10:14:32] [ERROR] Failed to install: Microsoft.Edge (Exit Code: -1978335135)
+[2026-02-05 10:14:33] [ERROR] Failed to install: WiresharkFoundation.Wireshark (Exit Code: -1978335135)
+[2026-02-05 10:14:34] [ERROR] Failed to install: Microsoft.VCRedist.2013.x64 (Exit Code: -1978335135)
+[2026-02-05 10:14:35] [ERROR] Failed to install: Microsoft.VCRedist.2015+.x86 (Exit Code: -1978335135)
+[2026-02-05 10:14:37] [ERROR] Failed to install: Famatech.AdvancedIPScanner (Exit Code: -1978335135)
+[2026-02-05 10:14:38] [ERROR] Failed to install: Microsoft.VCRedist.2015+.x64 (Exit Code: -1978335135)
+[2026-02-05 10:14:39] [ERROR] Failed to install: Microsoft.VCRedist.2013.x86 (Exit Code: -1978335135)
+[2026-02-05 10:14:40] [ERROR] Failed to install: Audinate.DanteVirtualSoundcard (Exit Code: -1978335135)
+[2026-02-05 10:14:41] [ERROR] Failed to install: Microsoft.DotNet.SDK.8 (Exit Code: -1978335135)
+[2026-02-05 10:14:42] [ERROR] Failed to install: ffmpeg (Exit Code: -1978335212)
+[2026-02-05 10:14:43] [ERROR] Failed to install: RaspberryPiFoundation.RaspberryPiImager (Exit Code: -1978335135)
+[2026-02-05 10:14:44] [ERROR] Failed to install: Microsoft.AppInstaller (Exit Code: -1978335135)
+[2026-02-05 10:14:45] [ERROR] Failed to install: Microsoft.UI.Xaml.2.7 (Exit Code: -1978335135)
+[2026-02-05 10:14:46] [ERROR] Failed to install: Microsoft.UI.Xaml.2.8 (Exit Code: -1978335135)
+[2026-02-05 10:14:47] [ERROR] Failed to install: Microsoft.VCLibs.Desktop.14 (Exit Code: -1978335135)
+[2026-02-05 10:14:48] [ERROR] Failed to install: Microsoft.WindowsTerminal (Exit Code: -1978335135)
+[2026-02-05 10:14:48] [HEADER] Software Installation Summary: Success=0, Failed=24
+[2026-02-05 10:14:53] [HEADER] ==========================================
+[2026-02-05 10:14:53] [HEADER]       PC INITIALIZER - SETUP MASTER       
+[2026-02-05 10:14:53] [HEADER] ==========================================
+[2026-02-05 10:16:58] [HEADER] ==========================================
+[2026-02-05 10:16:58] [HEADER]       PC INITIALIZER - SETUP MASTER       
+[2026-02-05 10:16:58] [HEADER] ==========================================
+[2026-02-05 10:17:00] [HEADER] --- STARTING STEP 2: SOFTWARE INSTALLATION ---
+[2026-02-05 10:17:02] [INFO] Already up to date: NagleCode.PacketSender (Code: -1978335189)
+[2026-02-05 10:17:03] [INFO] Already up to date: Microsoft.VCRedist.2010.x64 (Code: -1978335189)
+[2026-02-05 10:18:30] [SUCCESS] Successfully installed/updated: NDI.NDITools
+[2026-02-05 10:20:50] [SUCCESS] Successfully installed/updated: Wibu-Systems.CodeMeterRuntimeKit
+[2026-02-05 10:21:16] [SUCCESS] Successfully installed/updated: OpenJS.NodeJS.22
+[2026-02-05 10:21:21] [SUCCESS] Successfully installed/updated: RealVNC.VNCViewer
+[2026-02-05 10:21:22] [INFO] Already up to date: Apple.Bonjour (Code: -1978335189)
+[2026-02-05 10:21:23] [INFO] Already up to date: Google.Chrome.EXE (Code: -1978335189)
+[2026-02-05 10:21:24] [INFO] Already up to date: Microsoft.Edge (Code: -1978335189)
+[2026-02-05 10:22:04] [SUCCESS] Successfully installed/updated: WiresharkFoundation.Wireshark
+[2026-02-05 10:22:05] [INFO] Already up to date: Microsoft.VCRedist.2013.x64 (Code: -1978335189)
+[2026-02-05 10:22:23] [SUCCESS] Successfully installed/updated: Microsoft.VCRedist.2015+.x86
+[2026-02-05 10:22:24] [INFO] Already up to date: Famatech.AdvancedIPScanner (Code: -1978335189)
+[2026-02-05 10:22:35] [SUCCESS] Successfully installed/updated: Microsoft.VCRedist.2015+.x64
+[2026-02-05 10:22:36] [INFO] Already up to date: Microsoft.VCRedist.2013.x86 (Code: -1978335189)
+[2026-02-05 10:22:38] [INFO] Already up to date: Audinate.DanteVirtualSoundcard (Code: -1978335189)
+[2026-02-05 10:23:13] [SUCCESS] Successfully installed/updated: Microsoft.DotNet.SDK.8
+[2026-02-05 10:23:14] [ERROR] Failed to install: ffmpeg (Exit Code: -1978335212)
+[2026-02-05 10:23:27] [SUCCESS] Successfully installed/updated: RaspberryPiFoundation.RaspberryPiImager
+[2026-02-05 10:23:28] [INFO] Already up to date: Microsoft.AppInstaller (Code: -1978335189)
+[2026-02-05 10:23:29] [INFO] Already up to date: Microsoft.UI.Xaml.2.7 (Code: -1978335189)
+[2026-02-05 10:23:30] [INFO] Already up to date: Microsoft.UI.Xaml.2.8 (Code: -1978335189)
+[2026-02-05 10:23:31] [INFO] Already up to date: Microsoft.VCLibs.Desktop.14 (Code: -1978335189)
+[2026-02-05 10:23:57] [SUCCESS] Successfully installed/updated: Microsoft.WindowsTerminal
+[2026-02-05 10:23:57] [HEADER] Software Installation Summary: Success=23, Failed=1
+[2026-02-05 10:25:24] [HEADER] ==========================================
+[2026-02-05 10:25:24] [HEADER]       PC INITIALIZER - SETUP MASTER       
+[2026-02-05 10:25:24] [HEADER] ==========================================
+[2026-02-05 10:25:33] [HEADER] --- STARTING STEP 3: REPOSITORY CLONING ---
+[2026-02-05 10:25:33] [WARN] NOTE: Private repositories require a Personal Access Token (PAT).
+[2026-02-05 10:30:44] [SUCCESS] Token saved to .git-credentials
+[2026-02-05 10:30:45] [INFO] Cloning new repo: acciones-reaper
+[2026-02-05 10:30:46] [INFO] Cloning new repo: omi_reaper_lirycs
+[2026-02-05 10:30:48] [INFO] Cloning new repo: agent
+[2026-02-05 10:30:49] [INFO] Cloning new repo: companionconfigs
+[2026-02-05 10:30:50] [INFO] Cloning new repo: d3_player
+[2026-02-05 10:30:52] [SUCCESS] Repository Sync Complete. Check desktop folder: C:\Users\ClienteVR8\Desktop\repositorios
+[2026-02-05 10:30:54] [HEADER] ==========================================
+[2026-02-05 10:30:54] [HEADER]       PC INITIALIZER - SETUP MASTER       
+[2026-02-05 10:30:54] [HEADER] ==========================================
+[2026-02-05 10:31:29] [HEADER] ==========================================
+[2026-02-05 10:31:29] [HEADER]       PC INITIALIZER - SETUP MASTER       
+[2026-02-05 10:31:29] [HEADER] ==========================================
+[2026-02-05 11:45:06] [HEADER] ==========================================
+[2026-02-05 11:45:06] [HEADER]       PC INITIALIZER - SETUP MASTER       
+[2026-02-05 11:45:06] [HEADER] ==========================================
+[2026-02-05 11:45:10] [HEADER] --- STARTING STEP 2: SOFTWARE INSTALLATION ---
+[2026-02-05 11:45:12] [INFO] Already up to date: Cockos.REAPER (Code: -1978335189)
+[2026-02-05 11:45:14] [INFO] Already up to date: NagleCode.PacketSender (Code: -1978335189)
+[2026-02-05 11:45:15] [INFO] Already up to date: NDI.NDITools (Code: -1978335189)
+[2026-02-05 11:45:16] [INFO] Already up to date: RealVNC.VNCViewer (Code: -1978335189)
+[2026-02-05 11:45:30] [SUCCESS] Successfully installed/updated: RaspberryPiFoundation.RaspberryPiImager
+[2026-02-05 11:45:31] [INFO] Already up to date: Apple.Bonjour (Code: -1978335189)
+[2026-02-05 11:45:40] [SUCCESS] Successfully installed/updated: NDI.NDIRuntime
+[2026-02-05 11:45:57] [SUCCESS] Successfully installed/updated: OpenJS.NodeJS
+[2026-02-05 11:45:58] [INFO] Already up to date: Adobe.CreativeCloud (Code: -1978335189)
+[2026-02-05 11:45:59] [INFO] Already up to date: Google.Chrome.EXE (Code: -1978335189)
+[2026-02-05 11:46:00] [INFO] Already up to date: WiresharkFoundation.Wireshark (Code: -1978335189)
+[2026-02-05 11:46:01] [INFO] Already up to date: Famatech.AdvancedIPScanner (Code: -1978335189)
+[2026-02-05 11:46:02] [INFO] Already up to date: Microsoft.PowerToys (Code: -1978335189)
+[2026-02-05 11:46:03] [INFO] Already up to date: Audinate.DanteVirtualSoundcard (Code: -1978335189)
+[2026-02-05 11:46:04] [INFO] Already up to date: Microsoft.DotNet.SDK.8 (Code: -1978335189)
+[2026-02-05 11:58:33] [HEADER] ==========================================
+[2026-02-05 11:58:33] [HEADER]       PC INITIALIZER - CONTROL       
+[2026-02-05 11:58:33] [HEADER] ==========================================
+[2026-02-05 11:58:43] [HEADER] --- STARTING STEP 4: MANUAL LINKS (CONTROL) ---
+[2026-02-05 11:58:49] [SUCCESS] All manual links opened.
+[2026-02-05 11:59:10] [HEADER] ==========================================
+[2026-02-05 11:59:10] [HEADER]       PC INITIALIZER - CONTROL       
+[2026-02-05 11:59:10] [HEADER] ==========================================
+[2026-02-05 12:13:01] [HEADER] ==========================================
+[2026-02-05 12:13:01] [HEADER]       PC INITIALIZER - CONTROL       
+[2026-02-05 12:13:01] [HEADER] ==========================================

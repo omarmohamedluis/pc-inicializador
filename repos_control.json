@@ -1,0 +1,25 @@
+{
+    "description": "Repositorios para Perfil Control",
+    "repositories": [
+        {
+            "url": "https://github.com/omarmohamedluis/omi_reaper_lirycs.git",
+            "name": "omi_reaper_lirycs",
+            "private": true
+        },
+        {
+            "url": "https://github.com/omarmohamedluis/acciones-reaper.git",
+            "name": "acciones-reaper",
+            "private": true
+        },
+        {
+            "url": "https://github.com/omarmohamedluis/agent.git",
+            "name": "agent",
+            "private": true
+        },
+        {
+            "url": "https://github.com/omarmohamedluis/companionconfigs.git",
+            "name": "companionconfigs",
+            "private": true
+        }
+    ]
+}
