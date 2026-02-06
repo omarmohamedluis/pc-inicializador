@@ -107,6 +107,10 @@ function Select-Profile {
     Start-Sleep -Seconds 1
 }
 
+function Test-Command ($cmd) {
+    return (Get-Command $cmd -ErrorAction SilentlyContinue) -ne $null
+}
+
 function Check-GitToken {
     Write-Log "Checking GitHub credentials..." "INFO" -Console $false
     
@@ -168,7 +172,18 @@ function Install-WindowsUpdates {
     Write-Log "Scanning for updates (this may take a while)..." "INFO"
     try {
         $Updates = Get-WindowsUpdate -AcceptAll -Install -Verbose
-        Write-Log "Windows Update finished." "SUCCESS"
+        
+        if ($Updates) {
+            $Count = $Updates.Count
+            if ($Count -eq $null) { $Count = 1 } # Handle single object case
+            Write-Log "Found and installed $Count updates." "SUCCESS"
+            foreach ($u in $Updates) {
+                Write-Log "  -> Installed: $($u.Title)" "INFO" -Console $false
+                Write-Host "  [UPDATED] $($u.Title)" -ForegroundColor Green
+            }
+        } else {
+            Write-Log "No new Windows Updates found." "SUCCESS"
+        }
     } catch {
         Write-Log "Error running Windows Update: $_" "ERROR"
     }
