@@ -12,6 +12,10 @@
         "Url": "https://notchlc.notch.one/#download"
     },
     {
+        "Name": "mvp player",
+        "Url": "https://github.com/mpv-player/mpv/releases"
+    },
+    {
         "Name": "Realtek Ethernet Diagnostic",
         "Url": "https://www.realtek.com/Download/List?cate_id=584"
     }

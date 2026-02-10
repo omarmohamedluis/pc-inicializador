@@ -48,6 +48,10 @@
         "Url": "https://www.cuepilot.com/es/download.html"
     },
     {
+        "Name": "mvp player",
+        "Url": "https://github.com/mpv-player/mpv/releases"
+    },
+    {
         "Name": "Intech Studio MIDI",
         "Url": "https://intech.studio/us/software-downloads"
     }
