@@ -23,7 +23,16 @@
                     "PackageIdentifier": "WiresharkFoundation.Wireshark"
                 },
                 {
+                    "PackageIdentifier": "QL-Win.QuickLook"
+                },
+                {
                     "PackageIdentifier": "Google.Chrome"
+                },
+                {
+                    "PackageIdentifier": "OpenBoxLab.RaiDrive"
+                },
+                {
+                    "PackageIdentifier": "9NR4D7PWXBFR"
                 },
                 {
                     "PackageIdentifier": "Microsoft.PowerToys"

@@ -35,6 +35,12 @@
                     "PackageIdentifier": "Microsoft.PowerToys"
                 },
                 {
+                    "PackageIdentifier": "QL-Win.QuickLook"
+                },
+                {
+                    "PackageIdentifier": "OpenBoxLab.RaiDrive"
+                },
+                {
                     "PackageIdentifier": "RaspberryPiFoundation.RaspberryPiImager"
                 },
                 {
@@ -48,6 +54,12 @@
                 },
                 {
                     "PackageIdentifier": "WiresharkFoundation.Wireshark"
+                },
+                {
+                    "PackageIdentifier": "9NR4D7PWXBFR"
+                },
+                {
+                    "PackageIdentifier": "Postman.Postman"
                 },
                 {
                     "PackageIdentifier": "Google.Chrome"

@@ -9,7 +9,7 @@
     },
     {
         "Name": "X32 Edit",
-        "Url": "https://cdn.mediavalet.com/aunsw/musictribe/3vu8yRneAU6-aF0FD08DQg/K8yTgBRVKEWsp3m4Px8gCA/Original/X32-Edit_PC_4.4.zip"
+        "Url": "https://www.behringer.com/downloads.html"
     },
     {
         "Name": "Netgear Engage",
@@ -42,6 +42,10 @@
     {
         "Name": "Timecode Monitor",
         "Url": "https://timecodesync.com/monitor/"
+    },
+    {
+        "Name": "CuePilot",
+        "Url": "https://www.cuepilot.com/es/download.html"
     },
     {
         "Name": "Intech Studio MIDI",

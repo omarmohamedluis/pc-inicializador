@@ -17,6 +17,11 @@
             "private": true
         },
         {
+            "url": "https://github.com/omarmohamedluis/windows_tools.git",
+            "name": "windows_tools",
+            "private": true
+        },
+        {
             "url": "https://github.com/omarmohamedluis/companionconfigs.git",
             "name": "companionconfigs",
             "private": true
