@@ -25,6 +25,11 @@
             "url": "https://github.com/omarmohamedluis/companionconfigs.git",
             "name": "companionconfigs",
             "private": true
+        },
+        {
+            "url": "https://github.com/omarmohamedluis/d3-plugins.git",
+            "name": "d3-plugins",
+            "private": true
         }
     ]
 }

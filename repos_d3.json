@@ -10,6 +10,11 @@
             "url": "https://github.com/omarmohamedluis/windows_tools.git",
             "name": "windows_tools",
             "private": true
+        },
+        {
+            "url": "https://github.com/omarmohamedluis/d3-plugins.git",
+            "name": "d3-plugins",
+            "private": true
         }
     ]
 }
