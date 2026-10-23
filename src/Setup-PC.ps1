@@ -394,6 +394,29 @@ function Wait-ForInternet {
     return $false
 }
 
+function Assert-Internet {
+    param (
+        [int]$MaxRetries = 6,
+        [int]$WaitSeconds = 5
+    )
+    if (-not (Wait-ForInternet -MaxRetries $MaxRetries -WaitSeconds $WaitSeconds)) {
+        Write-Log "ERROR CRITICO: Sin conexion a Internet. Deteniendo ejecucion del script." "ERROR"
+        Write-Host "`n========================================================" -ForegroundColor Red
+        Write-Host " ERROR CRITICO: NO HAY CONEXION A INTERNET" -ForegroundColor Red
+        Write-Host "========================================================" -ForegroundColor Red
+        Write-Host "El script se ha detenido porque se requiere conexion de red activa." -ForegroundColor Yellow
+        Write-Host "Comprueba tu conexion / ejecuta 'ipconfig /renew' y vuelve a iniciar." -ForegroundColor Yellow
+        Write-Host "========================================================`n" -ForegroundColor Red
+        Write-Host "Presiona cualquier tecla para cerrar la ventana..." -ForegroundColor Yellow
+        try {
+            $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        } catch {
+            Start-Sleep -Seconds 15
+        }
+        exit 1
+    }
+}
+
 function Unprotect-SecretAES {
     param(
         [string]$Base64Cipher,
@@ -445,9 +468,42 @@ function Test-GitHubToken {
     return $null
 }
 
+function Save-GitCredentials {
+    param (
+        [string]$Token,
+        [string]$User
+    )
+    $global:GitHubToken = $Token
+    $global:GitHubUser  = $User
+    $env:GITHUB_TOKEN   = $Token
+    [Environment]::SetEnvironmentVariable("GITHUB_TOKEN", $Token, [EnvironmentVariableTarget]::User)
+    
+    $CredFile = Join-Path $env:USERPROFILE ".git-credentials"
+    if (Test-Command "git") {
+        git config --global credential.helper store
+    }
+    $lines = @(
+        "https://${User}:${Token}@github.com",
+        "https://${Token}@github.com",
+        "https://${Token}:x-oauth-basic@github.com"
+    )
+    $existing = if (Test-Path $CredFile) { Get-Content $CredFile -ErrorAction SilentlyContinue } else { @() }
+    foreach ($l in $lines) {
+        if ($existing -notcontains $l) {
+            $l | Out-File -FilePath $CredFile -Append -Encoding ascii
+        }
+    }
+}
+
 function Check-GitToken {
     Write-Log "Checking GitHub credentials..." "INFO" -Console $false
     
+    # Si ya tenemos credenciales validadas en la sesion actual, continuar silenciosamente
+    if ($global:GitHubToken -and $global:GitHubUser) {
+        Write-Host "GitHub ya autenticado como: $global:GitHubUser" -ForegroundColor Green
+        return
+    }
+
     if (-not (Wait-ForInternet -MaxRetries 4 -WaitSeconds 5)) {
         Write-Host "`nNo hay internet, intentelo con internet." -ForegroundColor Red
         return
@@ -457,7 +513,34 @@ function Check-GitToken {
     $TokenTxt = Join-Path $ScriptDir "github_token.txt"
     $TokenEnc = Join-Path $ScriptDir "github_token.enc"
 
-    # PRIORIDAD 1: Token en texto plano en el USB (github_token.txt) -> 100% automatico y silencioso
+    # PRIORIDAD 1: Credenciales ya configuradas en Windows ($env:GITHUB_TOKEN o ~/.git-credentials)
+    # Permite que tras reinicios el Paso 4 no vuelva a preguntar nada.
+    $envToken = [Environment]::GetEnvironmentVariable("GITHUB_TOKEN", "User")
+    if (-not $envToken) { $envToken = $env:GITHUB_TOKEN }
+    $SavedToken = $null
+
+    if (-not [string]::IsNullOrWhiteSpace($envToken)) {
+        $SavedToken = $envToken.Trim()
+    } elseif (Test-Path $CredFile) {
+        $content = Get-Content $CredFile -Raw -ErrorAction SilentlyContinue
+        if ($content -match 'https://[^:]+:([a-zA-Z0-9_]+)@github\.com') {
+            $SavedToken = $matches[1].Trim()
+        } elseif ($content -match 'https://([a-zA-Z0-9_]+)@github\.com') {
+            $SavedToken = $matches[1].Trim()
+        }
+    }
+
+    if ($SavedToken) {
+        $ghUser = Test-GitHubToken -Token $SavedToken
+        if ($ghUser) {
+            Write-Log "Credenciales de GitHub verificadas automaticamente para '$ghUser'." "SUCCESS"
+            Write-Host "GitHub autenticado automaticamente como: $ghUser" -ForegroundColor Green
+            Save-GitCredentials -Token $SavedToken -User $ghUser
+            return
+        }
+    }
+
+    # PRIORIDAD 2: Token en texto plano en el USB (github_token.txt) -> 100% automatico y silencioso
     if (Test-Path $TokenTxt) {
         $RawToken = (Get-Content $TokenTxt -Raw -ErrorAction SilentlyContinue).Trim()
         if (-not [string]::IsNullOrWhiteSpace($RawToken)) {
@@ -466,10 +549,7 @@ function Check-GitToken {
             if ($ghUser) {
                 Write-Log "Token de GitHub cargado automaticamente desde $TokenTxt (Usuario: $ghUser)." "SUCCESS"
                 Write-Host "GitHub autenticado automaticamente como: $ghUser" -ForegroundColor Green
-                git config --global credential.helper store
-                "https://${RawToken}:x-oauth-basic@github.com" | Out-File -FilePath $CredFile -Append -Encoding ascii
-                $env:GITHUB_TOKEN = $RawToken
-                [Environment]::SetEnvironmentVariable("GITHUB_TOKEN", $RawToken, [EnvironmentVariableTarget]::User)
+                Save-GitCredentials -Token $RawToken -User $ghUser
                 return
             } else {
                 Write-Log "El token en $TokenTxt fue rechazado por la API de GitHub." "WARN"
@@ -478,81 +558,85 @@ function Check-GitToken {
         }
     }
 
-    # PRIORIDAD 2: Token cifrado en el USB (github_token.enc) -> Pide contrasena maestra
+    # PRIORIDAD 3: Token cifrado en el USB (github_token.enc) -> Clave maestra o token directo
     if (Test-Path $TokenEnc) {
         $Cipher = (Get-Content $TokenEnc -Raw -ErrorAction SilentlyContinue).Trim()
         if (-not [string]::IsNullOrWhiteSpace($Cipher)) {
             Write-Host "`n========================================================" -ForegroundColor Cyan
             Write-Host " [SEGURIDAD] Token de GitHub cifrado detectado en el USB" -ForegroundColor Cyan
             Write-Host "========================================================" -ForegroundColor Cyan
+            
+            try {
+                $curLang = (Get-WinUserLanguageList)[0].LanguageTag
+                Write-Host "Teclado activo de Windows en este sistema: $curLang" -ForegroundColor Gray
+            } catch {}
+
+            Write-Host "Introduce la clave que pusiste al cifrar github_token.enc," -ForegroundColor Gray
+            Write-Host "o pega directamente tu Personal Access Token (PAT que empieza por ghp_):" -ForegroundColor Gray
+            
             $Attempts = 0
             while ($Attempts -lt 3) {
                 $Attempts++
-                $PassSecure = Read-Host -Prompt "Introduce tu contrasena maestra de GitHub (Intento $Attempts/3)" -AsSecureString
+                $PassSecure = Read-Host -Prompt "Clave de descifrado o Token PAT (Intento $Attempts/3)" -AsSecureString
                 $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($PassSecure)
-                $Password = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                $InputVal = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
                 
-                $Decrypted = Unprotect-SecretAES -Base64Cipher $Cipher -Password $Password
-                if ($Decrypted) {
-                    $ghUser = Test-GitHubToken -Token $Decrypted
+                if ([string]::IsNullOrWhiteSpace($InputVal)) {
+                    Write-Host "No has introducido ninguna clave." -ForegroundColor Yellow
+                    continue
+                }
+
+                # Caso A: El usuario pego directamente un token PAT (ghp_..., github_pat_...)
+                if ($InputVal.StartsWith("ghp_") -or $InputVal.StartsWith("github_pat_") -or $InputVal.StartsWith("gho_")) {
+                    $ghUser = Test-GitHubToken -Token $InputVal
                     if ($ghUser) {
-                        Write-Log "Token de GitHub descifrado y validado con exito para el usuario '$ghUser'." "SUCCESS"
-                        Write-Host "Token descifrado correctamente! Conectado como: $ghUser" -ForegroundColor Green
-                        git config --global credential.helper store
-                        "https://${Decrypted}:x-oauth-basic@github.com" | Out-File -FilePath $CredFile -Append -Encoding ascii
-                        $env:GITHUB_TOKEN = $Decrypted
-                        [Environment]::SetEnvironmentVariable("GITHUB_TOKEN", $Decrypted, [EnvironmentVariableTarget]::User)
+                        Write-Log "Token PAT directo verificado con exito para '$ghUser'." "SUCCESS"
+                        Write-Host "Token PAT valido! Conectado como: $ghUser" -ForegroundColor Green
+                        Save-GitCredentials -Token $InputVal -User $ghUser
                         return
+                    } else {
+                        Write-Host "El token PAT introducido fue rechazado por GitHub o no hay conexion." -ForegroundColor Red
+                        continue
                     }
                 }
-                Write-Host "Contrasena maestra incorrecta o token invalido." -ForegroundColor Red
-            }
-            Write-Log "Fallo al descifrar el token de GitHub tras 3 intentos con contrasena." "WARN"
-            Write-Host "No se pudo descifrar el token del USB tras 3 intentos." -ForegroundColor Yellow
-        }
-    }
 
-    # PRIORIDAD 3: Credenciales existentes en el sistema ($env:GITHUB_TOKEN o ~/.git-credentials)
-    $envToken = $env:GITHUB_TOKEN
-    $SavedToken = $null
-    if (-not [string]::IsNullOrWhiteSpace($envToken)) {
-        $SavedToken = $envToken.Trim()
-    } elseif (Test-Path $CredFile) {
-        $content = Get-Content $CredFile -Raw -ErrorAction SilentlyContinue
-        if ($content -match 'https://([^:]+):x-oauth-basic@github\.com') {
-            $SavedToken = $matches[1].Trim()
-        } elseif ($content -match 'https://[^:]+:([^@]+)@github\.com') {
-            $SavedToken = $matches[1].Trim()
-        }
-    }
-
-    if ($SavedToken) {
-        Write-Host "Verificando credenciales de GitHub existentes en el sistema..." -ForegroundColor Cyan
-        $ghUser = Test-GitHubToken -Token $SavedToken
-        if ($ghUser) {
-            Write-Log "Credenciales de GitHub verificadas para el usuario '$ghUser'." "SUCCESS"
-            Write-Host "GitHub autenticado correctamente como: $ghUser" -ForegroundColor Green
-            return
-        } else {
-            Write-Log "Las credenciales existentes de GitHub (.git-credentials) no son validas o han expirado." "WARN"
-            Write-Host "`n[AVISO] Las credenciales guardadas de GitHub NO son validas o caducaron." -ForegroundColor Yellow
-            $Update = Read-Host "Deseas corregir/introducir un nuevo GitHub PAT? (Y/N) [Default: Y]"
-            if ($Update -eq "N" -or $Update -eq "n") {
-                return
+                # Caso B: Descifrar el archivo cifrado usando la clave introducida
+                $Decrypted = Unprotect-SecretAES -Base64Cipher $Cipher -Password $InputVal
+                if ($Decrypted) {
+                    Write-Host "  -> Clave correcta! Descifrado OK. Validando con GitHub..." -ForegroundColor Cyan
+                    $ghUser = Test-GitHubToken -Token $Decrypted
+                    if ($ghUser) {
+                        Write-Log "Token de GitHub descifrado y validado con exito para '$ghUser'." "SUCCESS"
+                        Write-Host "Token descifrado correctamente! Conectado como: $ghUser" -ForegroundColor Green
+                        Save-GitCredentials -Token $Decrypted -User $ghUser
+                        return
+                    } else {
+                        Write-Host "  [AVISO] La clave es CORRECTA, pero GitHub rechazo el token guardado." -ForegroundColor Yellow
+                        Write-Host "  Es posible que el token haya caducado en GitHub o no haya conexion." -ForegroundColor Yellow
+                    }
+                } else {
+                    Write-Host "Clave incorrecta (no coincide con el cifrado de este archivo)." -ForegroundColor Red
+                    if ($Attempts -eq 1) {
+                        Write-Host "  [PISTA] Comprueba si la VM tiene el teclado en Ingles (EN) o mayusculas activadas." -ForegroundColor Yellow
+                    }
+                }
             }
-        }
-    } else {
-        Write-Host "NOTA: Los repositorios privados requieren un Personal Access Token (PAT)." -ForegroundColor Yellow
-        $Choice = Read-Host "Quieres introducir un GitHub PAT ahora? (Y/N) [Default: N]"
-        if ($Choice -ne "Y" -and $Choice -ne "y") {
-            Write-Log "Paso de token de GitHub omitido." "INFO"
-            return
+            Write-Log "Fallo al autenticar token de GitHub tras 3 intentos." "WARN"
+            Write-Host "No se pudo autenticar el token del USB tras 3 intentos." -ForegroundColor Yellow
         }
     }
 
     # PRIORIDAD 4: Entrada manual interactiva como fallback
+    Write-Host "`nNOTA: Los repositorios privados requieren un Personal Access Token (PAT)." -ForegroundColor Yellow
+    Write-Host "Generalo en GitHub -> Settings -> Developer Settings -> Personal access tokens." -ForegroundColor Gray
+    $Choice = Read-Host "Quieres introducir un GitHub PAT ahora? (Y/N) [Default: N]"
+    if ($Choice -ne "Y" -and $Choice -ne "y") {
+        Write-Log "Paso de token de GitHub omitido." "INFO"
+        return
+    }
+
     do {
-        $Token = Read-Host -Prompt "Pega tu GitHub PAT (se ocultara)" -AsSecureString
+        $Token = Read-Host -Prompt "Pega tu GitHub PAT (ej: ghp_..., se ocultara)" -AsSecureString
         $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Token)
         $PlainToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
         
@@ -572,14 +656,7 @@ function Check-GitToken {
         if ($ghUser) {
             Write-Log "Token de GitHub validado con exito para el usuario '$ghUser'." "SUCCESS"
             Write-Host "Token valido! Conectado como: $ghUser" -ForegroundColor Green
-            
-            git config --global credential.helper store
-            $credLine = "https://${PlainToken}:x-oauth-basic@github.com"
-            $credLine | Out-File -FilePath $CredFile -Append -Encoding ascii
-            
-            $env:GITHUB_TOKEN = $PlainToken
-            [Environment]::SetEnvironmentVariable("GITHUB_TOKEN", $PlainToken, [EnvironmentVariableTarget]::User)
-            Write-Log "Credenciales de GitHub guardadas localmente." "INFO"
+            Save-GitCredentials -Token $PlainToken -User $ghUser
             break
         } else {
             Write-Log "El token de GitHub introducido no es valido o fue rechazado por la API." "ERROR"
@@ -587,15 +664,12 @@ function Check-GitToken {
             $Retry = Read-Host "Quieres volver a intentarlo? (Y/N) [Default: Y]"
             if ($Retry -eq "N" -or $Retry -eq "n") {
                 Write-Log "Configuracion de token cancelada tras fallo de validacion." "WARN"
-                if (Test-Path $CredFile) {
-                    Write-Host "Borrando credenciales no validas..." -ForegroundColor Yellow
-                    Remove-Item $CredFile -Force
-                }
                 return
             }
         }
     } while ($true)
 }
+
 function Install-WindowsUpdates {
     Write-StepStart "PASO 1 - ACTUALIZACIONES DE WINDOWS"
 
@@ -607,12 +681,7 @@ function Install-WindowsUpdates {
         return
     }
 
-    if (-not (Wait-ForInternet -MaxRetries 4 -WaitSeconds 5)) {
-        Write-Log "No se detecta conexion a Internet para buscar actualizaciones." "ERROR"
-        Write-StepEnd "PASO 1 - ACTUALIZACIONES DE WINDOWS"
-        Pause-If-Interactive
-        return
-    }
+    Assert-Internet -MaxRetries 6 -WaitSeconds 5
 
     if (-not (Get-Module -ListAvailable -Name PSWindowsUpdate)) {
         Write-Log "Installing PSWindowsUpdate module..." "INFO"
@@ -654,6 +723,7 @@ function Install-WindowsUpdates {
 
 function Invoke-WinUtilTweaks {
     Write-StepStart "PASO 2 - TWEAKS, DEBLOAT Y CONFIGURACION DE WINGET"
+    Assert-Internet -MaxRetries 6 -WaitSeconds 5
 
     # 1. Configurar Winget y actualizar fuentes primero
     Update-WingetSources
@@ -672,9 +742,21 @@ function Invoke-WinUtilTweaks {
 
     if (Test-Path $ConfigFile) {
         Write-Log "Found WinUtil config file: $ConfigFile" "INFO"
-        Write-Host "Applying Windows tweaks in headless mode..." -ForegroundColor Cyan
+        Write-Host "Applying Windows tweaks in headless mode (capturing full live stream)..." -ForegroundColor Cyan
         try {
-            & ([scriptblock]::Create((irm "https://christitus.com/win"))) -Config $ConfigFile
+            $winUtilScript = [scriptblock]::Create((irm "https://christitus.com/win"))
+            & $winUtilScript -Config $ConfigFile *>&1 | ForEach-Object {
+                $line = "$_"
+                if ($line -and $line.Trim() -ne "") {
+                    if ($_ -is [System.Management.Automation.ErrorRecord]) {
+                        Write-Host "  [WinUtil ERROR] $line" -ForegroundColor Red
+                        Write-Log "[WinUtil ERROR] $line" "ERROR" -Console $false
+                    } else {
+                        Write-Host "  [WinUtil] $line" -ForegroundColor DarkCyan
+                        Write-Log "[WinUtil] $line" "INFO" -Console $false
+                    }
+                }
+            }
             Write-Log "WinUtil tweaks applied successfully." "SUCCESS"
         } catch {
             Write-Log "Error applying WinUtil tweaks: $_" "ERROR"
@@ -761,6 +843,7 @@ function Install-IDEExtensions {
 
 function Install-Software {
     Write-StepStart "PASO 3 - INSTALACION DE SOFTWARE ($global:ProfileName)"
+    Assert-Internet -MaxRetries 6 -WaitSeconds 5
 
     if (-not (Test-Path $global:InstallJson)) {
         Write-Log "Config file not found: $global:InstallJson" "ERROR"
@@ -861,6 +944,7 @@ function Install-Software {
 
 function Sync-Repositories {
     Write-StepStart "PASO 4 - CLONACION DE REPOSITORIOS ($global:ProfileName)"
+    Assert-Internet -MaxRetries 6 -WaitSeconds 5
 
     Update-SessionEnvironment
 
@@ -887,14 +971,15 @@ function Sync-Repositories {
         New-Item -Path $RepoDestDir -ItemType Directory -Force | Out-Null
     }
 
-    $Repos = Get-Content $global:ReposJson -Raw | ConvertFrom-Json
+    $RawRepos = Get-Content $global:ReposJson -Raw | ConvertFrom-Json
+    $Repos = if ($RawRepos.repositories) { $RawRepos.repositories } else { $RawRepos }
     $Total = $Repos.Count
     $Current = 0
 
     foreach ($repo in $Repos) {
         $Current++
         $Url = $repo.url
-        $Folder = $repo.folder
+        $Folder = if ($repo.name) { $repo.name } elseif ($repo.folder) { $repo.folder } else { Split-Path $Url -LeafBase }
         $TargetDir = Join-Path $RepoDestDir $Folder
 
         Write-Host "`n[$Current/$Total] Checking repository: $Folder..." -ForegroundColor Cyan
@@ -915,13 +1000,22 @@ function Sync-Repositories {
             Write-Host "  Cloning repository..." -ForegroundColor Yellow
             Write-Log "Cloning $Url to $TargetDir..." "INFO" -Console $false
 
-            $CloneProcess = Start-Process -FilePath "git" -ArgumentList "clone $Url `"$TargetDir`"" -NoNewWindow -Wait -PassThru
+            $CloneUrl = $Url
+            if ($repo.private -and $global:GitHubToken -and $global:GitHubUser) {
+                $CloneUrl = $Url -replace 'https://', "https://$($global:GitHubUser):$($global:GitHubToken)@"
+            }
+
+            $CloneProcess = Start-Process -FilePath "git" -ArgumentList "clone $CloneUrl `"$TargetDir`"" -NoNewWindow -Wait -PassThru
             if ($CloneProcess.ExitCode -eq 0) {
+                if ($CloneUrl -ne $Url) {
+                    Start-Process -FilePath "git" -ArgumentList "-C `"$TargetDir`" remote set-url origin `"$Url`"" -NoNewWindow -Wait | Out-Null
+                }
                 Write-Log "Repository $Folder cloned successfully." "SUCCESS"
                 Write-Host "  [OK] Cloned successfully." -ForegroundColor Green
             } else {
-                Write-Log "Failed to clone repository $Folder (Exit code: $($CloneProcess.ExitCode))" "ERROR"
-                Write-Host "  [FAIL] Clone failed. Check token / repository permissions." -ForegroundColor Red
+                $errCode = $CloneProcess.ExitCode
+                Write-Log "Failed to clone repository $Folder from $Url (Exit code: $errCode)" "ERROR"
+                Write-Host "  [ERROR] Clone failed with exit code $errCode" -ForegroundColor Red
             }
         }
     }
@@ -1150,19 +1244,92 @@ function Remove-SetupState {
     if (Test-Path $StateFile) { Remove-Item $StateFile -Force }
 }
 
+function Enable-AutoLogon {
+    param (
+        [string]$Username = $env:USERNAME,
+        [string]$Password = ""
+    )
+    
+    $WinLogonKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
+    
+    # 1. Asegurar que Windows Hello / PIN no bloquee el AutoLogon en Windows 10/11
+    $PasswordLessKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\PasswordLess\Device"
+    if (Test-Path $PasswordLessKey) {
+        Set-ItemProperty -Path $PasswordLessKey -Name "DevicePasswordLessBuildVersion" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+    }
+
+    # 2. Desactivar pantalla de bloqueo (Lock Screen) para pasar directamente al escritorio
+    $PersKey = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization"
+    if (-not (Test-Path $PersKey)) { New-Item -Path $PersKey -Force | Out-Null }
+    Set-ItemProperty -Path $PersKey -Name "NoLockScreen" -Value 1 -Type DWord -ErrorAction SilentlyContinue
+
+    # 3. Configurar credenciales y forzar AutoLogon directo
+    Set-ItemProperty -Path $WinLogonKey -Name "AutoAdminLogon" -Value "1" -Type String
+    Set-ItemProperty -Path $WinLogonKey -Name "ForceAutoLogon" -Value "1" -Type String
+    Set-ItemProperty -Path $WinLogonKey -Name "DefaultUserName" -Value $Username -Type String
+    Set-ItemProperty -Path $WinLogonKey -Name "DefaultDomainName" -Value $env:USERDOMAIN -Type String
+    
+    # Windows exige que DefaultPassword exista (aunque sea vacio) para omitir la pantalla de inicio de sesion
+    if (-not [string]::IsNullOrEmpty($Password)) {
+        Set-ItemProperty -Path $WinLogonKey -Name "DefaultPassword" -Value $Password -Type String
+    } else {
+        Set-ItemProperty -Path $WinLogonKey -Name "DefaultPassword" -Value "" -Type String
+    }
+
+    # 4. Asegurar que no se exija pulsar Ctrl+Alt+Supr ni confirmaciones
+    $SysPolKey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
+    if (Test-Path $SysPolKey) {
+        Set-ItemProperty -Path $SysPolKey -Name "DisableCAD" -Value 1 -Type DWord -ErrorAction SilentlyContinue
+        Set-ItemProperty -Path $SysPolKey -Name "dontdisplaylastusername" -Value 0 -Type DWord -ErrorAction SilentlyContinue
+    }
+
+    Write-Log "Auto-Logon configurado y pantalla de bloqueo desactivada para el usuario '$Username'." "SUCCESS"
+}
+
+function Disable-AutoLogon {
+    $WinLogonKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
+    Set-ItemProperty -Path $WinLogonKey -Name "AutoAdminLogon" -Value "0" -Type String
+    if (Get-ItemProperty -Path $WinLogonKey -Name "ForceAutoLogon" -ErrorAction SilentlyContinue) {
+        Remove-ItemProperty -Path $WinLogonKey -Name "ForceAutoLogon" -ErrorAction SilentlyContinue
+    }
+    if (Get-ItemProperty -Path $WinLogonKey -Name "DefaultPassword" -ErrorAction SilentlyContinue) {
+        Remove-ItemProperty -Path $WinLogonKey -Name "DefaultPassword" -ErrorAction SilentlyContinue
+    }
+    
+    # Restaurar pantalla de bloqueo
+    $PersKey = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization"
+    if (Get-ItemProperty -Path $PersKey -Name "NoLockScreen" -ErrorAction SilentlyContinue) {
+        Remove-ItemProperty -Path $PersKey -Name "NoLockScreen" -ErrorAction SilentlyContinue
+    }
+    Write-Log "Auto-Logon de Windows desactivado y credenciales limpiadas." "INFO"
+}
+
 function Set-RegistryAutoRun {
     $LauncherPath = Join-Path $RootDir "Run-Setup.bat"
-    Set-ItemProperty -Path $RegPath -Name $RegName -Value "`"$LauncherPath`""
+    
+    # 1. Tarea programada con privilegios maximos (omite ventana UAC completamente tras el reinicio)
+    try {
+        $TaskCmd = "schtasks /Create /TN `"$RegName`" /TR `"`"$LauncherPath`"`" /SC ONLOGON /RL HIGHEST /F"
+        cmd.exe /c $TaskCmd 2>$null | Out-Null
+        Write-Log "Tarea programada de autoarranque elevada ($RegName) registrada con exito." "INFO"
+    } catch {
+        # Fallback al registro clasico
+        Set-ItemProperty -Path $RegPath -Name $RegName -Value "`"$LauncherPath`"" -ErrorAction SilentlyContinue
+    }
 }
 
 function Remove-RegistryAutoRun {
+    try {
+        cmd.exe /c "schtasks /Delete /TN `"$RegName`" /F" 2>$null | Out-Null
+    } catch {}
     if (Get-ItemProperty -Path $RegPath -Name $RegName -ErrorAction SilentlyContinue) {
-        Remove-ItemProperty -Path $RegPath -Name $RegName
+        Remove-ItemProperty -Path $RegPath -Name $RegName -ErrorAction SilentlyContinue
     }
 }
 
 function Resume-AutoSequence {
     param ([PSCustomObject]$State)
+    $Script:NonInteractive = $true
     
     $global:ProfileName = $State.Profile
     $global:Suffix = if ($global:ProfileName -eq "OMAR" -or $global:ProfileName -eq "CONTROL") { "omar" } else { "designer_basico" }
@@ -1179,12 +1346,12 @@ function Resume-AutoSequence {
         $global:LogFile = New-RunLogFile -Tag "ALL"
     }
     
-    Write-Log "================================================================" "HEADER"
-    Write-Log "REANUDANDO SECUENCIA AUTOMATICA (v$global:AppVersion)" "HEADER"
-    Write-Log "PERFIL: $global:ProfileName | SIGUIENTE PASO: $($State.Step)" "HEADER"
-    Write-Log "LOG: $global:LogFile" "HEADER"
-    Write-Log "================================================================" "HEADER"
+    Write-Log "REANUDANDO SECUENCIA AUTOMATICA (v$global:AppVersion) | PERFIL: $global:ProfileName | PASO: $($State.Step)" "HEADER"
+    Write-Log "LOG: $global:LogFile" "INFO"
     Start-Sleep -Seconds 2
+    
+    # Verificar conexion tras reinicio antes de arrancar el siguiente paso
+    Assert-Internet -MaxRetries 8 -WaitSeconds 5
     
     switch ($State.Step) {
         1 {
@@ -1215,6 +1382,7 @@ function Resume-AutoSequence {
             Sync-Repositories
             Open-ManualLinks
             Remove-RegistryAutoRun
+            Disable-AutoLogon
             Remove-SetupState
             Write-Log "SECUENCIA AUTOMATICA COMPLETADA CON EXITO" "STEP_DONE"
             Write-Host "`nALL STEPS FINISHED SUCCESSFULLY." -ForegroundColor Green
@@ -1234,7 +1402,40 @@ Write-Log "PowerShell security protocols initialized: $([Net.ServicePointManager
 # 1. CHECK FOR RESUME STATE
 $State = Get-SetupState
 if ($State) {
-    Resume-AutoSequence -State $State
+    Write-Host "`n========================================================" -ForegroundColor Cyan
+    Write-Host " SECUENCIA PREVIA DETECTADA (SIGUIENTE: PASO $($State.Step))" -ForegroundColor Cyan
+    Write-Host "========================================================" -ForegroundColor Cyan
+    Write-Host "Perfil guardado: $($State.Profile)" -ForegroundColor Gray
+    Write-Host "Archivo de log:  $($State.LogFile)" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Reanudando automaticamente en 4 segundos..." -ForegroundColor Yellow
+    Write-Host "Si deseas CANCELAR y volver al menu inicial, pulsa 'C' ahora." -ForegroundColor Yellow
+    Write-Host ""
+    
+    $Cancel = $false
+    for ($i = 4; $i -gt 0; $i--) {
+        Write-Host -NoNewline "`rReanudando en $i segundo(s)... [Pulsa 'C' para cancelar] "
+        if ([Console]::KeyAvailable) {
+            $key = [Console]::ReadKey($true)
+            if ($key.KeyChar -eq 'c' -or $key.KeyChar -eq 'C') {
+                $Cancel = $true
+                break
+            }
+        }
+        Start-Sleep -Seconds 1
+    }
+    Write-Host ""
+    
+    if ($Cancel) {
+        Write-Host "`n[CANCELADO] Secuencia previa descartada. Iniciando desde cero..." -ForegroundColor Green
+        Remove-SetupState
+        Remove-RegistryAutoRun
+        Disable-AutoLogon
+        Start-Sleep -Seconds 1
+        Log-SystemInfo
+    } else {
+        Resume-AutoSequence -State $State
+    }
 } else {
     Log-SystemInfo
 }
@@ -1333,11 +1534,25 @@ do {
             Open-ManualLinks 
         }
         "6" { 
+            $Script:NonInteractive = $true
             Write-Host "`n[Modo Secuencia Automatica]" -ForegroundColor Cyan
             $Reboot = Read-Host "Deseas REINICIAR entre cada paso? (Recomendado para instalaciones limpias) Y/N [Default: Y]"
             
             if ($Reboot -ne "N" -and $Reboot -ne "n") {
                 Check-GitToken
+                
+                # Preguntar contrasena de Windows para AutoLogon (iniciar sesion sin pantalla de login)
+                Write-Host "`nPara que Windows inicie sesion solo tras cada reinicio sin pedir PIN ni contrasena:" -ForegroundColor Gray
+                $HasPass = Read-Host "Tu cuenta de Windows ($env:USERNAME) tiene contrasena? (Y/N) [Default: N]"
+                $UserPass = ""
+                if ($HasPass -eq "Y" -or $HasPass -eq "y") {
+                    $SecurePass = Read-Host -Prompt "Introduce la contrasena de Windows (se ocultara)" -AsSecureString
+                    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecurePass)
+                    $UserPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+                }
+                
+                Write-Host "Configurando inicio de sesion automatico (AutoLogon)..." -ForegroundColor Yellow
+                Enable-AutoLogon -Username $env:USERNAME -Password $UserPass
                 
                 # Generar archivo de log dedicado para todo el proceso completo (ALL)
                 $global:LogFile = New-RunLogFile -Tag "ALL"
@@ -1345,7 +1560,7 @@ do {
                 Write-Log "MAQUINA: $env:COMPUTERNAME | FECHA: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" "INFO"
                 Write-Log "LOG: $global:LogFile" "INFO"
                 
-                Write-Host "Configurando inicio automatico tras reinicio..." -ForegroundColor Yellow
+                Write-Host "Configurando tarea programada de inicio automatico tras reinicio..." -ForegroundColor Yellow
                 Set-RegistryAutoRun
                 Save-SetupState -Profile $global:ProfileName -NextStep 1 -LogFile $global:LogFile
                 

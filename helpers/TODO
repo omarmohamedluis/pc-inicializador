@@ -32,3 +32,18 @@ archivar Ctrl+Shift+A
     ✔ @ask con lo de rasapberry pi, que pasa si no lo instalo, y lo ejecuto? me lo volvera a preguntar? o he perdido mi oportunidad y ninca lo sabré¿ @done(26-10-23 13:15)
     ✔ @ask en todo, puedo hacer que si una tarea esta "@started" pero no "@done" se ponga el texto en naranja? @done(26-10-23 13:17)
     ✔ @ask @do token de github hibrido (cifrado AES-256 con contrasena maestra corta o archivo silencioso) @done(26-10-23 13:55)
+    ✔ @do si no hay conexion a Internet, detener el script por completo con aviso critico @done(26-10-23 14:30)
+    ✔ @do me ha pedido permisos tras el segundo reinicio ¿es normal? @done(26-10-23 15:33)
+    ✔ @ask al terminar el primer reinicio, y decirme de pulsar una tecla, ha salido un error, pero se ha salido rapidisimo y no me ha dado tiempo a ver que era (despues de pulsar el boton) pero no lo ha guardado en logs @done(26-10-23 15:34)
+    ✔ @ask los tweaks, no se han visto en consola, me gutaria verlos en consola si es posible @done(26-10-23 15:50)
+    ✔ @ask el auto log on no está funcionando (restaurado Enable-AutoLogon y prompt de contrasena en opcion 6) @done(26-10-23 15:50)
+    ✔ @ask en el paso 4, me ha vuelto a pedir mi contraseña de github, ¿es la de github o la del token? si es la del token, deberia decir token, no github, y además, he metido la del token y me ha dado error. @done(26-10-23 16:03)
+    ✔ @do los scripts para el virtual usb, sean un flip entre host y vm sin clonar nada (creado Flip-USB-Virtual) @done(26-10-23 16:07)
+    ☐ @ask saltan MAZO errores en consola de tipo caracter no valido y cosas así, puedes asegurarte porfa que podemos capturar esos logs?
+    ☐ @ask algo ha fallado de la herrameinta de tweaks, creo que no isntalo nada, algo falló...
+    ☐ @ask reducir los instaladores de winget aún mas, los que funcionen los metemos en "reactivate" y los quitamos de la lista, pa no tardar la vida
+    ☐ @ask github me pide las credenciales en el paso "0" y en el paso "4", tendria que pedirlas solo en el paso 0, y si son extrictamente necesarias, que no las pida en el paso "0" y solo las pida en el paso 4
+    ☐ @ask reducir los repositorios clonados a solo uno que sea rápido, y los otros apuntarlos en reactivate para el futuro
+    ☐ @ask en el ultimo log, el paso 4 lo he cerrado yo sin querer, por eso va a aparecer dos veces xD
+    ☐ @ask ¿porque se me ha instlado un software de github? y se me ha abierto en el paso 4? al cerrar el popup, (que no me habia salido nunca) ha cuajado la movida... ¿no es suficiente con los tokens? o no los estamos pasando correctamente o algo? el mambo es con los repos privados cre
+    

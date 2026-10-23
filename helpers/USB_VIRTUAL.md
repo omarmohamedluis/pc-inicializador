@@ -66,22 +66,11 @@ Mount-VHD -Path "C:\USB_Virtual.vhdx"
 
 ---
 
-## 💡 Scripts Rápidos (Opcional)
+## 💡 Script de Alternancia Rápida: `Flip-USB-Virtual`
 
-Si deseas alternar con un solo clic sin escribir comandos, puedes guardar estos dos scripts en tu equipo:
+En la carpeta [helpers/](file:///c:/Users/moruv/Desktop/repos/pc-inicializador/helpers) tienes el script conmutador **[Flip-USB-Virtual.bat](file:///c:/Users/moruv/Desktop/repos/pc-inicializador/helpers/Flip-USB-Virtual.bat)** (y [.ps1](file:///c:/Users/moruv/Desktop/repos/pc-inicializador/helpers/Flip-USB-Virtual.ps1)):
 
-### `Pasar-a-VM.ps1`
-```powershell
-Dismount-VHD -Path "C:\USB_Virtual.vhdx" -ErrorAction SilentlyContinue
-$vm = Get-VM | Where-Object { $_.Name -like "*pc inicializador*" }
-Add-VMHardDiskDrive -VM $vm -Path "C:\USB_Virtual.vhdx"
-Write-Host "USB Virtual conectado a la VM con exito." -ForegroundColor Green
-```
+- **Si está en la VM**: Lo desconecta en caliente de la máquina virtual y te lo monta en el Host (en tu Explorador de Windows, ej. `D:`).
+- **Si está en el Host**: Lo desmonta de tu equipo físico y lo conecta en caliente dentro de la máquina virtual en 2 segundos.
 
-### `Traer-a-Host.ps1`
-```powershell
-$vm = Get-VM | Where-Object { $_.Name -like "*pc inicializador*" }
-Get-VMHardDiskDrive -VM $vm | Where-Object { $_.Path -like "*USB_Virtual.vhdx*" } | Remove-VMHardDiskDrive -ErrorAction SilentlyContinue
-Mount-VHD -Path "C:\USB_Virtual.vhdx"
-Write-Host "USB Virtual montado en el Host con exito." -ForegroundColor Green
-```
+Solo tienes que hacer doble clic en `Flip-USB-Virtual.bat` cada vez que quieras cambiar el disco de sitio. ¡Sin sincronizaciones automáticas ni complicaciones!
