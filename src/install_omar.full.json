@@ -20,9 +20,6 @@
                     "PackageIdentifier": "Gyan.FFmpeg"
                 },
                 {
-                    "PackageIdentifier": "GitHub.GitHubDesktop"
-                },
-                {
                     "PackageIdentifier": "NDI.NDITools"
                 },
                 {
@@ -44,10 +41,7 @@
                     "PackageIdentifier": "RaspberryPiFoundation.RaspberryPiImager"
                 },
                 {
-                    "PackageIdentifier": "RealVNC.VNCServer"
-                },
-                {
-                    "PackageIdentifier": "RealVNC.VNCViewer"
+                    "PackageIdentifier": "RealVNC.VNCConnect.Viewer"
                 },
                 {
                     "PackageIdentifier": "Cockos.REAPER"
@@ -63,6 +57,21 @@
                 },
                 {
                     "PackageIdentifier": "Google.Chrome"
+                },
+                {
+                    "PackageIdentifier": "Bitfocus.Companion"
+                },
+                {
+                    "PackageIdentifier": "Git.Git"
+                },
+                {
+                    "PackageIdentifier": "Python.Python.3.12"
+                },
+                {
+                    "PackageIdentifier": "VideoLAN.VLC"
+                },
+                {
+                    "PackageIdentifier": "CoreyButler.NVMforWindows"
                 }
             ]
         }

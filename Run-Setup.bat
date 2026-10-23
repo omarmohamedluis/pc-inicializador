@@ -13,7 +13,7 @@ if %errorLevel% neq 0 (
 
 REM Launch the PowerShell orchestrator
 cd /d "%~dp0"
-powershell -NoProfile -ExecutionPolicy Bypass -File "Setup-PC.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0src\Setup-PC.ps1" %*
 
 if %errorlevel% neq 0 (
     echo.

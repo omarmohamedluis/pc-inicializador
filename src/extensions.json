@@ -1,0 +1,26 @@
+[
+  {
+    "id": "fabiospampinato.vscode-todo-plus",
+    "name": "Todo+"
+  },
+  {
+    "id": "ms-python.python",
+    "name": "Python"
+  },
+  {
+    "id": "ms-python.debugpy",
+    "name": "Python Debugger"
+  },
+  {
+    "id": "ms-python.vscode-python-envs",
+    "name": "Python Environments"
+  },
+  {
+    "id": "meta.pyrefly",
+    "name": "Pyrefly"
+  },
+  {
+    "id": "llvm-vs-code-extensions.vscode-clangd",
+    "name": "clangd"
+  }
+]

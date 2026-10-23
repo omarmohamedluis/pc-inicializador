@@ -1,0 +1,42 @@
+
+cntr int para meter nueva linea
+alt d para marcar como hecha
+alt c marcar como cancelada
+control shift a archivar
+
+@critical @high @low @today @reactivate
+
+☐ LISTA MAESTRA DE REACTIVACION PARA PAQUETE FINAL:
+
+    ☐ @critical @reactivate PASO 1 - Windows Updates:
+        En src/Setup-PC.ps1 cambiar la linea:
+        $global:TestingMode_SkipWindowsUpdate = $false
+        (Para que vuelva a escanear e instalar todas las actualizaciones acumulativas de Windows reales).
+
+    ☐ @high @reactivate PASO 2 - WinUtil Features & Tweaks pesados:
+        En src/winutil_config.json (o copiar directamente desde src/winutil_config.full.json):
+        ☐ @do volver a activar Disk Cleanup (WPFTweaksDiskCleanup) en src/winutil_config.json
+        ☐ @do volver a activar .NET Framework 3.5 (WPFFeaturesdotnet) en src/winutil_config.json para el paquete final
+        ☐ @do volver a activar Hyper-V (WPFFeatureshyperv)
+        ☐ @do volver a activar Windows Sandbox (WPFFeaturesSandbox)
+
+    ☐ @high @reactivate PASO 3 - Software Winget (Perfil OMAR):
+        En src/install_omar.json:
+        (O copiar directamente desde src/install_omar.full.json)
+        Volver a incorporar los 13 programas que ya sabemos que funcionan al 100%:
+        - "NDI.NDITools" (NDI Tools - tardo 376s / ~6 min en instalarse)
+        - "OpenBoxLab.RaiDrive" (RaiDrive - tardo 150s / ~2.5 min)
+        - "RaspberryPiFoundation.RaspberryPiImager" (Raspberry Pi Imager - tardo 118s / ~2 min)
+        - "Microsoft.PowerToys" (PowerToys - tardo 96s / ~1.5 min)
+        - "Bitfocus.Companion" (Companion - tardo 101s / ~1.7 min)
+        - "Google.Antigravity" (Antigravity IDE - tardo 71s / ~1.2 min)
+        - "Gyan.FFmpeg" (FFmpeg - tardo 82s)
+        - "Python.Python.3.12" (Python 3.12 - tardo 60s)
+        - "Cockos.REAPER" (REAPER - tardo 40s)
+        - "WiresharkFoundation.Wireshark" (Wireshark - tardo 40s)
+        - "QL-Win.QuickLook" (QuickLook - tardo 40s)
+        - "OpenJS.NodeJS" (NodeJS - tardo 23s)
+        - "NagleCode.PacketSender" (PacketSender - tardo 18s)
+
+    ☐ @low @reactivate PASO 4 - Repositorios Git:
+        Verificar que el token de GitHub (src/github_token.txt) tenga permisos validos antes de empaquetar en el USB definitivo.

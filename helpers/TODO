@@ -1,0 +1,34 @@
+
+cntr int para meter nueva linea
+alt d para marcar como hecha
+alt c marcar como cancelada
+control shift a archivar
+archivar Ctrl+Shift+A
+
+@critical @high @low @today @bug @ask @do @test
+
+☐ cosas:
+    ✔ @do añadir repos @done(26-10-22 14:42)
+    ✔ @ask @do la herramienta esa mazo inteligente(irm "https://christitus.com/win" | iex) la de powershell y hacer una lista de opciones para automatizar el proceso. @done(26-10-22 15:15)
+    ✔ @ask repasar instaladores winget (por si falta alguno) @done(26-10-22 12:51)
+    ✔ @do cambiar nombres de -> d3 a designer basico / control -> omar @done(26-10-22 12:39)
+    ✔ @ask confirmar si de la lista de links control, no hay algo en winget @done(26-10-22 12:51)
+    ✔ @ask ver si me sobran archivos @done(26-10-22 13:17)
+    ✔ @ask revisar todos mis programas instalados, que no esten en winget, por si hay que añaidr alguno al repo @done(26-10-22 13:17)
+    ✔ @do actualizar documentacion al final. @done(26-10-22 15:30)
+    ✔ @ask, puedo hacer que cunado cree un archivo "TODO" tenga el cabezal que tiene este archivo? @done(26-10-22 13:35)
+    ✔ @ask cuando instale antigravity ide, puedo instalar las mismas extensiones que tengo ahora? @done(26-10-22 14:41)
+    ✔ @do orden de archivos, todo en una carpeta, ecepto run-setuo,todo,readme, y gitignore @done(26-10-22 15:19)
+    ✔ @do logs @done(26-10-22 15:18)
+    ✔ @do abrir una ventana al final de otod, despues del ultimo reinico con un "COMPLETADO CON EXITO!" Y un boton de ver log. @done(26-10-22 15:17)
+    ✔ @do volver a activar Disk Cleanup (WPFTweaksDiskCleanup) en src/winutil_config.json (trasladado a REACTIVATE.todo) @done(26-10-23 13:40)
+    ✔ @do volver a activar .NET Framework 3.5 (WPFFeaturesdotnet) en src/winutil_config.json para el paquete final (trasladado a REACTIVATE.todo) @done(26-10-23 13:40)
+    ✔ @do cuando pase el log, y vemoas que funcione, desactivar cosas, para que los testeos sena már rapidos, por ejemplo, de winget, dejar algo que se instale rápido, por probar que funciona en vez de todo, los tweaks, los que tarde demasiado los quitamos (esto cunato más probemos mejor) y luego dejar reflejado que hemos desactivado para que despues no tarde tanto, ¿hacer un reactivate.todo con todo lo que tenemos que reactivar? @done(26-10-23 13:36)
+    ✔ @ask github, solo quiero el motor de github, no necesito el gihub desktop ¿o van de la mano? @done(26-10-23 13:06)
+    ✔ @ask log de errors? por si ha faltado por ejemplo, por instalar un programa por lo que sea, que yo no tenga que leerme todo el log para saberlo, así me haga un resumen de lo que ha ido mal, al finalizar el paso 6, me haga un los que se llame error_fecha y hora (que coincidan con el archivo log original), y en el final del todo, en el popup, tenga otro boton que sea, ademas de ver log, ver errores. ¿como lo ves? @done(26-10-23 13:06)
+    ✔ @bug error de psotman puede ser por la cantidad de opciones? Postman         Postman.Postman       12.33.4 winget ese es el que quiero @done(26-10-23 13:09)
+    ✔ @ask puedo pasarle un "usb virtual" a mi maquina virtual para poder acceder a los archivos y los logs desde aquí? ya qu eahora al haber quitado lo de conexion avanzada no puedo hacer conotrolc  controlv @done(26-10-23 13:11)
+    ✔ @ask como no tengo escojido el navegador en el sistema operativo por defecto en windows, me saltan mil mensajes de (selecciones una aplicacion para abrir estos http) cuando termine winget, podemos configurar esto en windows, ademá, antes de abrir todas las ventanas, en google, molaría que pudiese registrarme en chrome y despues abrir las ventanas @done(26-10-23 13:14)
+    ✔ @ask con lo de rasapberry pi, que pasa si no lo instalo, y lo ejecuto? me lo volvera a preguntar? o he perdido mi oportunidad y ninca lo sabré¿ @done(26-10-23 13:15)
+    ✔ @ask en todo, puedo hacer que si una tarea esta "@started" pero no "@done" se ponga el texto en naranja? @done(26-10-23 13:17)
+    ✔ @ask @do token de github hibrido (cifrado AES-256 con contrasena maestra corta o archivo silencioso) @done(26-10-23 13:55)
