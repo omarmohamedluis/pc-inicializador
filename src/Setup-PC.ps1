@@ -26,7 +26,7 @@ $global:AppVersion = "1.0.0"
 # Si es $true, omite la descarga e instalacion de Windows Updates en Paso 1
 # para que los tests de reinicios y secuencia completa duren minutos.
 # (Reactivar a $false para produccion final - ver REACTIVATE.todo)
-$global:TestingMode_SkipWindowsUpdate = $true
+$global:TestingMode_SkipWindowsUpdate = $false
 
 # Directorio de logs dedicado
 $global:LogDir = Join-Path $RootDir "logs"
@@ -63,8 +63,18 @@ function Get-ErrorLogPath {
     return (Join-Path $Dir ("error_" + $Leaf))
 }
 
-# Inicializar variable global de log
+# Inicializar variables globales de log y seguimiento de errores de PowerShell
 $global:LogFile = $null
+$global:LoggedPSErrors = @{}
+$Error.Clear()
+
+# Captura global de excepciones terminantes no controladas
+trap {
+    $lineNum = if ($_.InvocationInfo -and $_.InvocationInfo.ScriptLineNumber) { " (Linea $($_.InvocationInfo.ScriptLineNumber))" } else { "" }
+    $errMsg  = "[EXCEPCION NO CONTROLADA$lineNum] $($_.Exception.Message)"
+    try { Write-Log $errMsg "ERROR" } catch {}
+    continue
+}
 
 # Forzar TLS 1.2 globalmente para descargas y modulos (PowerShell Gallery, NuGet, WinUtil, GitHub)
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
@@ -132,6 +142,35 @@ function Write-Log {
     }
 }
 
+function Sync-PowerShellErrors {
+    param ([string]$Context = "PowerShell")
+    if ($Error.Count -gt 0 -and $global:LogFile) {
+        for ($i = $Error.Count - 1; $i -ge 0; $i--) {
+            $err = $Error[$i]
+            if (-not $err) { continue }
+            $invLine = if ($err.InvocationInfo -and $err.InvocationInfo.Line) { $err.InvocationInfo.Line } else { "" }
+            # Ignorar comprobaciones internas silenciadas intencionadamente
+            if ($invLine -match 'SilentlyContinue|Test-Command|GetResponse') { continue }
+
+            $lineNum = if ($err.InvocationInfo -and $err.InvocationInfo.ScriptLineNumber) { $err.InvocationInfo.ScriptLineNumber } else { 0 }
+            $msg = if ($err.Exception) { $err.Exception.Message } else { "$err" }
+            $errKey = "${lineNum}:${msg}"
+            if (-not $global:LoggedPSErrors.ContainsKey($errKey)) {
+                $global:LoggedPSErrors[$errKey] = $true
+                $lineInfo = if ($lineNum -gt 0) { " (Linea $lineNum)" } else { "" }
+                Write-Log "[$Context Error$lineInfo] $msg" "ERROR" -Console $false
+            }
+        }
+    }
+}
+
+function Initialize-RunLog {
+    param ([string]$Tag = "setup")
+    $global:LogFile = New-RunLogFile -Tag $Tag
+    Write-Log "PowerShell security protocols initialized: $([Net.ServicePointManager]::SecurityProtocol)" "INFO" -Console $false
+    Log-SystemInfo
+}
+
 function Write-StepStart {
     param ([string]$StepName)
     Write-Log "$StepName INICIADO" "HEADER"
@@ -139,6 +178,7 @@ function Write-StepStart {
 
 function Write-StepEnd {
     param ([string]$StepName)
+    Sync-PowerShellErrors -Context $StepName
     Write-Log "$StepName FINALIZADO CON EXITO" "STEP_DONE"
 }
 
@@ -191,7 +231,10 @@ function Select-Profile {
 }
 
 function Test-Command ($cmd) {
-    return (Get-Command $cmd -ErrorAction SilentlyContinue) -ne $null
+    $errBefore = $Error.Count
+    $res = (Get-Command $cmd -ErrorAction SilentlyContinue) -ne $null
+    while ($Error.Count -gt $errBefore) { $Error.RemoveAt(0) }
+    return $res
 }
 
 function Update-SessionEnvironment {
@@ -202,15 +245,19 @@ function Update-SessionEnvironment {
 
         $gitDirs = @(
             "C:\Program Files\Git\cmd",
-            "C:\Program Files\Gitin",
-            "$env:LOCALAPPDATA\Programs\Git\cmd"
+            "C:\Program Files\Git\bin",
+            "$env:LOCALAPPDATA\Programs\Git\cmd",
+            "$env:LOCALAPPDATA\Programs\Git\bin"
         )
         foreach ($gd in $gitDirs) {
-            if ((Test-Path $gd) -and ($env:Path -notlike "*$gd*")) {
+            if ((Test-Path -LiteralPath $gd -ErrorAction SilentlyContinue) -and ($env:Path -notlike "*$gd*")) {
                 $env:Path = "$gd;$env:Path"
             }
         }
-    } catch {}
+    } catch {
+        Write-Log "Warning updating session environment: $_" "WARN" -Console $false
+    }
+    Sync-PowerShellErrors -Context "Update-SessionEnvironment"
 }
 
 function Configure-WingetSettings {
@@ -353,21 +400,26 @@ function Log-SystemInfo {
 }
 
 function Test-Internet {
-    try {
-        $req = [System.Net.WebRequest]::Create("https://www.google.com")
-        $req.Timeout = 3000
-        $resp = $req.GetResponse()
-        $resp.Close()
-        return $true
-    } catch {}
-
-    if (Test-Connection -ComputerName "1.1.1.1" -Count 1 -Quiet -ErrorAction SilentlyContinue) {
-        return $true
+    # Verificar conectividad DNS + HTTPS real (evita falsos positivos de ping IP cuando el DNS aun no ha levantado tras reiniciar)
+    $errBefore = $Error.Count
+    $testUrls = @(
+        "https://github.com",
+        "https://www.microsoft.com",
+        "https://www.google.com"
+    )
+    foreach ($url in $testUrls) {
+        try {
+            $req = [System.Net.WebRequest]::Create($url)
+            $req.Method = "HEAD"
+            $req.Timeout = 4000
+            $resp = $req.GetResponse()
+            $resp.Close()
+            while ($Error.Count -gt $errBefore) { $Error.RemoveAt(0) }
+            return $true
+        } catch {}
     }
-    if (Test-Connection -ComputerName "8.8.8.8" -Count 1 -Quiet -ErrorAction SilentlyContinue) {
-        return $true
-    }
 
+    while ($Error.Count -gt $errBefore) { $Error.RemoveAt(0) }
     return $false
 }
 
@@ -455,16 +507,23 @@ function Test-GitHubToken {
     )
     if ([string]::IsNullOrWhiteSpace($Token)) { return $null }
 
-    try {
-        $headers = @{
-            "Authorization" = "Bearer $Token"
-            "User-Agent"    = "PowerShell-PCInitializer"
+    $errBefore = $Error.Count
+    for ($attempt = 1; $attempt -le 2; $attempt++) {
+        try {
+            $headers = @{
+                "Authorization" = "Bearer $Token"
+                "User-Agent"    = "PowerShell-PCInitializer"
+            }
+            $resp = Invoke-RestMethod -Uri "https://api.github.com/user" -Headers $headers -Method Get -TimeoutSec 15 -ErrorAction Stop
+            if ($resp -and $resp.login) {
+                while ($Error.Count -gt $errBefore) { $Error.RemoveAt(0) }
+                return $resp.login
+            }
+        } catch {
+            if ($attempt -lt 2) { Start-Sleep -Seconds 2 }
         }
-        $resp = Invoke-RestMethod -Uri "https://api.github.com/user" -Headers $headers -Method Get -TimeoutSec 8 -ErrorAction Stop
-        if ($resp -and $resp.login) {
-            return $resp.login
-        }
-    } catch {}
+    }
+    while ($Error.Count -gt $errBefore) { $Error.RemoveAt(0) }
     return $null
 }
 
@@ -476,31 +535,37 @@ function Save-GitCredentials {
     $global:GitHubToken = $Token
     $global:GitHubUser  = $User
     $env:GITHUB_TOKEN   = $Token
+    $env:GIT_TERMINAL_PROMPT = "0"
+    $env:GCM_INTERACTIVE = "never"
     [Environment]::SetEnvironmentVariable("GITHUB_TOKEN", $Token, [EnvironmentVariableTarget]::User)
     
     $CredFile = Join-Path $env:USERPROFILE ".git-credentials"
     if (Test-Command "git") {
-        git config --global credential.helper store
+        git config --global credential.helper store 2>$null
+        git config --global credential.interactive never 2>$null
     }
     $lines = @(
         "https://${User}:${Token}@github.com",
         "https://${Token}@github.com",
         "https://${Token}:x-oauth-basic@github.com"
     )
-    $existing = if (Test-Path $CredFile) { Get-Content $CredFile -ErrorAction SilentlyContinue } else { @() }
-    foreach ($l in $lines) {
-        if ($existing -notcontains $l) {
-            $l | Out-File -FilePath $CredFile -Append -Encoding ascii
-        }
+    $existing = if (Test-Path $CredFile) {
+        @(Get-Content $CredFile -ErrorAction SilentlyContinue | Where-Object { $_ -and $_ -notmatch '@github\.com' })
+    } else {
+        @()
     }
+    $newContent = $existing + $lines
+    $newContent | Set-Content -Path $CredFile -Encoding ascii -Force
 }
 
 function Check-GitToken {
     Write-Log "Checking GitHub credentials..." "INFO" -Console $false
     
-    # Si ya tenemos credenciales validadas en la sesion actual, continuar silenciosamente
+    # Si ya tenemos credenciales validadas (en la sesion actual o restauradas desde Paso 0 via .setup_state),
+    # aplicar configuracion en git (por si Git se acaba de instalar en el Paso 3) y continuar sin preguntar.
     if ($global:GitHubToken -and $global:GitHubUser) {
-        Write-Host "GitHub ya autenticado como: $global:GitHubUser" -ForegroundColor Green
+        Save-GitCredentials -Token $global:GitHubToken -User $global:GitHubUser
+        Write-Log "GitHub ya autenticado desde el inicio de la secuencia como: $global:GitHubUser" "SUCCESS"
         return
     }
 
@@ -721,6 +786,37 @@ function Install-WindowsUpdates {
     Pause-If-Interactive
 }
 
+function Get-WinUtilScriptContent {
+    $LocalWinUtil = Join-Path $ScriptDir "winutil.ps1"
+    $WinUtilUrls = @(
+        "https://github.com/ChrisTitusTech/winutil/releases/latest/download/winutil.ps1",
+        "https://christitus.com/win"
+    )
+
+    foreach ($url in $WinUtilUrls) {
+        try {
+            Write-Log "Downloading WinUtil from $url..." "INFO" -Console $false
+            $raw = Invoke-RestMethod -Uri $url -TimeoutSec 15 -ErrorAction Stop
+            if ($raw -and $raw.Length -gt 10000) {
+                Write-Log "WinUtil downloaded successfully from $url ($($raw.Length) chars)." "SUCCESS" -Console $false
+                try {
+                    [System.IO.File]::WriteAllText($LocalWinUtil, $raw, [System.Text.Encoding]::UTF8)
+                } catch {}
+                return $raw
+            }
+        } catch {
+            Write-Log "Could not download WinUtil from ${url}: $($_.Exception.Message)" "WARN" -Console $false
+        }
+    }
+
+    if (Test-Path -LiteralPath $LocalWinUtil -ErrorAction SilentlyContinue) {
+        Write-Log "Using cached local WinUtil copy from USB ($LocalWinUtil)..." "INFO"
+        return (Get-Content -LiteralPath $LocalWinUtil -Raw -Encoding UTF8 -ErrorAction Stop)
+    }
+
+    throw "No se pudo descargar WinUtil ni se encontro copia local en $LocalWinUtil"
+}
+
 function Invoke-WinUtilTweaks {
     Write-StepStart "PASO 2 - TWEAKS, DEBLOAT Y CONFIGURACION DE WINGET"
     Assert-Internet -MaxRetries 6 -WaitSeconds 5
@@ -744,19 +840,37 @@ function Invoke-WinUtilTweaks {
         Write-Log "Found WinUtil config file: $ConfigFile" "INFO"
         Write-Host "Applying Windows tweaks in headless mode (capturing full live stream)..." -ForegroundColor Cyan
         try {
-            $winUtilScript = [scriptblock]::Create((irm "https://christitus.com/win"))
+            $winUtilRaw = Get-WinUtilScriptContent
+            $winUtilScript = [scriptblock]::Create($winUtilRaw)
+            $lastWinUtilLine = ""
             & $winUtilScript -Config $ConfigFile *>&1 | ForEach-Object {
-                $line = "$_"
-                if ($line -and $line.Trim() -ne "") {
+                $cleanLine = ("$_" -replace "`r", "").Trim()
+                if ($cleanLine -ne "" -and $cleanLine -ne $lastWinUtilLine) {
+                    $lastWinUtilLine = $cleanLine
                     if ($_ -is [System.Management.Automation.ErrorRecord]) {
-                        Write-Host "  [WinUtil ERROR] $line" -ForegroundColor Red
-                        Write-Log "[WinUtil ERROR] $line" "ERROR" -Console $false
+                        Write-Host "  [WinUtil ERROR] $cleanLine" -ForegroundColor Red
+                        Write-Log "[WinUtil ERROR] $cleanLine" "ERROR" -Console $false
                     } else {
-                        Write-Host "  [WinUtil] $line" -ForegroundColor DarkCyan
-                        Write-Log "[WinUtil] $line" "INFO" -Console $false
+                        Write-Host "  [WinUtil] $cleanLine" -ForegroundColor DarkCyan
+                        Write-Log "[WinUtil] $cleanLine" "INFO" -Console $false
                     }
                 }
             }
+            $Host.UI.RawUI.WindowTitle = "PC Initializer v$global:AppVersion - $global:ProfileName"
+
+            # Copiar el log interno de WinUtil a la carpeta logs/ del USB para inspeccion detallada
+            try {
+                $wuLogDir = Join-Path $env:LOCALAPPDATA "winutil\logs"
+                if (Test-Path $wuLogDir) {
+                    $latestWuLog = Get-ChildItem -Path $wuLogDir -Filter "winutil_*.log" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+                    if ($latestWuLog) {
+                        $destWuLog = Join-Path $global:LogDir ("winutil_" + $env:COMPUTERNAME + "_" + $latestWuLog.Name.Replace("winutil_", ""))
+                        Copy-Item -LiteralPath $latestWuLog.FullName -Destination $destWuLog -Force -ErrorAction SilentlyContinue
+                        Write-Log "WinUtil detailed log copied to: $destWuLog" "INFO" -Console $false
+                    }
+                }
+            } catch {}
+
             Write-Log "WinUtil tweaks applied successfully." "SUCCESS"
         } catch {
             Write-Log "Error applying WinUtil tweaks: $_" "ERROR"
@@ -769,7 +883,8 @@ function Invoke-WinUtilTweaks {
             $Choice = Read-Host
             if ($Choice -eq "Y" -or $Choice -eq "y") {
                 try {
-                    irm "https://christitus.com/win" | iex
+                    $winUtilRaw = Get-WinUtilScriptContent
+                    Invoke-Expression $winUtilRaw
                     Write-Log "WinUtil interactive session finished." "SUCCESS"
                 } catch {
                     Write-Log "Failed to launch WinUtil: $_" "ERROR"
@@ -801,15 +916,18 @@ function Install-IDEExtensions {
         return
     }
 
+    $agyCmdPath  = Join-Path $env:LOCALAPPDATA "Programs\Antigravity IDE\bin\antigravity-ide.cmd"
+    $codeCmdPath = Join-Path $env:LOCALAPPDATA "Programs\Microsoft VS Code\bin\code.cmd"
+
     $IdeCmd = $null
     if (Test-Command "antigravity-ide") {
         $IdeCmd = "antigravity-ide"
-    } elseif (Test-Path "$env:LOCALAPPDATA\Programs\Antigravity IDEinntigravity-ide.cmd") {
-        $IdeCmd = "$env:LOCALAPPDATA\Programs\Antigravity IDEinntigravity-ide.cmd"
+    } elseif (Test-Path -LiteralPath $agyCmdPath -ErrorAction SilentlyContinue) {
+        $IdeCmd = $agyCmdPath
     } elseif (Test-Command "code") {
         $IdeCmd = "code"
-    } elseif (Test-Path "$env:LOCALAPPDATA\Programs\Microsoft VS Codein\code.cmd") {
-        $IdeCmd = "$env:LOCALAPPDATA\Programs\Microsoft VS Codein\code.cmd"
+    } elseif (Test-Path -LiteralPath $codeCmdPath -ErrorAction SilentlyContinue) {
+        $IdeCmd = $codeCmdPath
     }
 
     if (-not $IdeCmd) {
@@ -838,7 +956,98 @@ function Install-IDEExtensions {
             Write-Host "  [ERROR] $_" -ForegroundColor Red
         }
     }
+    Sync-PowerShellErrors -Context "Install-IDEExtensions"
     Write-Log "IDE Extensions installation complete." "SUCCESS"
+}
+
+function Configure-TaskbarLayout {
+    Write-Log "Configuring Windows 11 Taskbar layout (hiding Task View, removing Edge/Store/Outlook, pinning Chrome)..." "INFO"
+    $errBefore = $Error.Count
+    try {
+        # 1. Ocultar boton de Vista de Tareas (Task View) y Widgets en la barra de tareas
+        $AdvKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+        if (Test-Path $AdvKey) {
+            Set-ItemProperty -Path $AdvKey -Name "ShowTaskViewButton" -Type DWord -Value 0 -ErrorAction SilentlyContinue
+        }
+
+        # 2. Asegurar desinstalacion de Outlook (New) por si seguia anclado
+        Get-AppxPackage -Name "*OutlookForWindows*" -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue
+
+        # 3. Preparar carpeta User Pinned\TaskBar con SOLO File Explorer.lnk y Google Chrome.lnk
+        $PinnedDir = Join-Path $env:APPDATA "Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
+        if (-not (Test-Path -LiteralPath $PinnedDir)) {
+            New-Item -Path $PinnedDir -ItemType Directory -Force | Out-Null
+        }
+
+        # Eliminar accesos directos no deseados (Microsoft Edge, etc.)
+        Get-ChildItem -LiteralPath $PinnedDir -Filter "*.lnk" -Force -ErrorAction SilentlyContinue | Where-Object {
+            $_.Name -ne "File Explorer.lnk" -and $_.Name -ne "Google Chrome.lnk"
+        } | Remove-Item -Force -ErrorAction SilentlyContinue
+
+        # Asegurar File Explorer.lnk
+        $feLnk = Join-Path $PinnedDir "File Explorer.lnk"
+        if (-not (Test-Path -LiteralPath $feLnk)) {
+            $feB64 = "TAAAAAEUAgAAAAAAwAAAAAAAAEbFAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAABYAFAAfgNhfIFL7XX1EgBrQtS8ug+EAACkAQAAlAFMAeQBzAHQAZQBtAFIAbwBvAHQAJQBcAHMAeQBzAHQAZQBtADMAMgBcAFMAaABlAGwAbAAzADIALgBkAGwAbAAsAC0AMgAyADUANwA5ABUAJQB3AGkAbgBkAGkAcgAlAFwAZQB4AHAAbABvAHIAZQByAC4AZQB4AGUArwAAAAkAAKAtAAAAMVNQU+KKWEa8TDhDu/wTkyaYbc4RAAAAAAAAAAATAAAAAAAAAAAAAAB2AAAAMVNQU1UoTJ95nzlLqNDh1C3h1fNJAAAABQAAAAAfAAAAGwAAAE0AaQBjAHIAbwBzAG8AZgB0AC4AVwBpAG4AZABvAHcAcwAuAEUAeABwAGwAbwByAGUAcgAAAAAAEQAAABIAAAAAEwAAAAEAAAAAAAAAAAAAAAAAAAA="
+            [System.IO.File]::WriteAllBytes($feLnk, [Convert]::FromBase64String($feB64))
+        }
+
+        # Copiar Google Chrome.lnk desde el Menu Inicio (con su AppUserModelID 'Chrome')
+        $chromeDestLnk = Join-Path $PinnedDir "Google Chrome.lnk"
+        $chromeStartCandidates = @(
+            "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Google Chrome.lnk",
+            "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Google Chrome.lnk",
+            "C:\Users\Public\Desktop\Google Chrome.lnk"
+        )
+        $copiedChromeLnk = $false
+        foreach ($cand in $chromeStartCandidates) {
+            if (Test-Path -LiteralPath $cand -ErrorAction SilentlyContinue) {
+                Copy-Item -LiteralPath $cand -Destination $chromeDestLnk -Force -ErrorAction SilentlyContinue
+                $copiedChromeLnk = $true
+                break
+            }
+        }
+        if (-not $copiedChromeLnk -and (Test-Path "C:\Program Files\Google\Chrome\Application\chrome.exe")) {
+            $wsh = New-Object -ComObject WScript.Shell
+            $sc = $wsh.CreateShortcut($chromeDestLnk)
+            $sc.TargetPath = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+            $sc.Save()
+        }
+
+        # 4. Detener Explorer brevemente para que no sobrescriba Taskband al cerrarse, escribir el layout limpio y relanzarlo
+        $tbKey  = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Taskband"
+        $auxKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Taskband\AuxilliaryPins"
+        $favB64 = "AKADAAA6AB9JRxoDWXI/p0SJxVWV/msw7iYAAQAmAO++EAAAAAXVBNdvxNsBbwgV7H8/3AEbD47yfz/cARQAggB0ABwAQ0ZTRhYAMQAAAAAArlrrCxIAQXBwRGF0YQAAAHQaWV6W39NIjWcXM7zuKLrFzfrfn2dWQYlHxcdrwLZ/QAAJAAQA776uWt0LUVuEfC4AAAAIlyIAAAALAAAAAAAAAAAAAAAAAAAAnsrmAEEAcABwAEQAYQB0AGEAAABCAFYAMQAAAAAAPlsSsBAAUm9hbWluZwBAAAkABADvvq5a3QtRW0Z9LgAAAAmXIgAAAAsAAAAAAAAAAAAAAAAAAADc6nEAUgBvAGEAbQBpAG4AZwAAABYAXAAxAAAAAACuWicMFABNSUNST1N+MQAARAAJAAQA776uWt0LUVuJey4AAAAKlyIAAAALAAAAAAAAAAAAAAAAAAAAg2IPAE0AaQBjAHIAbwBzAG8AZgB0AAAAGABsADEAAAAAAK5aKgwQAElOVEVSTn4xAABUAAkABADvvsVWiGlRW3t8LgAAABqXIgAAAAsAAAAAAAAAAAAAAAAAAADocBkASQBuAHQAZQByAG4AZQB0ACAARQB4AHAAbABvAHIAZQByAAAAGABiADEAAAAAAEhbNn4RAFFVSUNLTH4xAABKAAkABADvvsVWiGlRW8CALgAAABuXIgAAAAsAAAAAAAAAAAAAAAAAAABBjKsAUQB1AGkAYwBrACAATABhAHUAbgBjAGgAAAAYAGAAMQAAAAAArlouDBIAVVNFUlBJfjEAAEgACQAEAO++xVbVaVFbOmkuAAAAvqEiAAAACwAAAAAAAAAAAAAAAAAAAL2SGgBVAHMAZQByACAAUABpAG4AbgBlAGQAAAAYAFYAMQAAAAAAAAAAABAAVGFza0JhcgBAAAkABADvvgAAAAAAAAAALgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVABhAHMAawBCAGEAcgAAABYArAAyAK4FAABRWwOBIABHT09HTEV+MS5MTksAAFQACQAEAO++xVaFbFFbA4EuAAAAUJEAAAAAEQAAAAAAAAAAAAAAAAAAABfuAAFHAG8AbwBnAGwAZQAgAEMAaAByAG8AbQBlAC4AbABuAGsAAAAcABoAAAAdAO++AgBDAGgAcgBvAG0AZQAAABwAIgAAAB4A774CAFUAcwBlAHIAUABpAG4AbgBlAGQAAAAcAAAAAKQBAAA6AB+AyCc0HxBcEEKqAy7kUofWaCYAAQAmAO++EgAAAFZsya+vl9kBHht+2q+X2QGSSYXar5fZARQAVgAxAAAAAADFVvtpEQBUYXNrQmFyAEAACQAEAO++xVb7acVW+2kuAAAAFLUBAAAAAQAAAAAAAAAAAAAAAAAAAG4X3wBUAGEAcwBrAEIAYQByAAAAFgASATIAlwEAAKdUZiogAEZJTEVFWH4xLkxOSwAAfAAJAAQA777FVvtpxVb7aS4AAAAWtQEAAAABAAAAAAAAAAAAUgAAAAAApBOiAEYAaQBsAGUAIABFAHgAcABsAG8AcgBlAHIALgBsAG4AawAAAEAAcwBoAGUAbABsADMAMgAuAGQAbABsACwALQAyADIAMAA2ADcAAAAcABIAAAArAO++kkmF2q+X2QEcAEIAAAAdAO++AgBNAGkAYwByAG8AcwBvAGYAdAAuAFcAaQBuAGQAbwB3AHMALgBFAHgAcABsAG8AcgBlAHIAAAAcACYAAAAeAO++AgBTAHkAcwB0AGUAbQBQAGkAbgBuAGUAZAAAABwAAAD/"
+        $favBytes = [Convert]::FromBase64String($favB64)
+
+        Stop-Process -Name "explorer" -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Milliseconds 800
+
+        if (-not (Test-Path $tbKey)) { New-Item -Path $tbKey -Force | Out-Null }
+        if (Get-ItemProperty -Path $tbKey -Name "FavoritesResolve" -ErrorAction SilentlyContinue) {
+            Remove-ItemProperty -Path $tbKey -Name "FavoritesResolve" -ErrorAction SilentlyContinue
+        }
+        Set-ItemProperty -Path $tbKey -Name "Favorites" -Type Binary -Value $favBytes -ErrorAction SilentlyContinue
+        Set-ItemProperty -Path $tbKey -Name "FavoritesVersion" -Type DWord -Value 3 -ErrorAction SilentlyContinue
+        Set-ItemProperty -Path $tbKey -Name "FavoritesChanges" -Type DWord -Value 20 -ErrorAction SilentlyContinue
+        Set-ItemProperty -Path $tbKey -Name "FavoritesRemovedChanges" -Type DWord -Value 61 -ErrorAction SilentlyContinue
+
+        if (-not (Test-Path $auxKey)) { New-Item -Path $auxKey -Force | Out-Null }
+        Set-ItemProperty -Path $auxKey -Name "MailPin" -Type DWord -Value 1 -ErrorAction SilentlyContinue
+        Set-ItemProperty -Path $auxKey -Name "CopilotPWAPin" -Type DWord -Value 1 -ErrorAction SilentlyContinue
+        Set-ItemProperty -Path $auxKey -Name "TFLPin" -Type DWord -Value 1 -ErrorAction SilentlyContinue
+        Set-ItemProperty -Path $auxKey -Name "RecallPin" -Type DWord -Value 1 -ErrorAction SilentlyContinue
+
+        if (-not (Get-Process -Name "explorer" -ErrorAction SilentlyContinue)) {
+            Start-Process "explorer.exe"
+        }
+        Write-Log "Taskbar layout configured successfully (File Explorer + Google Chrome)." "SUCCESS"
+    } catch {
+        Write-Log "Could not fully configure Taskbar layout: $_" "WARN"
+        if (-not (Get-Process -Name "explorer" -ErrorAction SilentlyContinue)) {
+            Start-Process "explorer.exe"
+        }
+    }
+    while ($Error.Count -gt $errBefore) { $Error.RemoveAt(0) }
 }
 
 function Install-Software {
@@ -930,6 +1139,9 @@ function Install-Software {
     # Install IDE extensions if Antigravity IDE or VS Code was installed
     Install-IDEExtensions
 
+    # Configurar la Barra de Tareas (ocultar Vista de Tareas, quitar Edge/Store/Outlook y anclar Chrome + Explorador)
+    Configure-TaskbarLayout
+
     Write-Log "Software installation finished. Installed: $($InstalledPkgs.Count), Failed: $($FailedPkgs.Count)" "INFO"
     if ($FailedPkgs.Count -gt 0) {
         Write-Host "`nThe following packages failed to install:" -ForegroundColor Red
@@ -963,6 +1175,12 @@ function Sync-Repositories {
         return
     }
 
+    # Desactivar cualquier popup grafico de Git Credential Manager (GCM)
+    $env:GIT_TERMINAL_PROMPT = "0"
+    $env:GCM_INTERACTIVE = "never"
+    git config --global credential.helper store 2>$null
+    git config --global credential.interactive never 2>$null
+
     # Verificar credenciales de GitHub antes de clonar
     Check-GitToken
 
@@ -973,7 +1191,7 @@ function Sync-Repositories {
 
     $RawRepos = Get-Content $global:ReposJson -Raw | ConvertFrom-Json
     $Repos = if ($RawRepos.repositories) { $RawRepos.repositories } else { $RawRepos }
-    $Total = $Repos.Count
+    $Total = @($Repos).Count
     $Current = 0
 
     foreach ($repo in $Repos) {
@@ -984,11 +1202,24 @@ function Sync-Repositories {
 
         Write-Host "`n[$Current/$Total] Checking repository: $Folder..." -ForegroundColor Cyan
 
+        $AuthUrl = $Url
+        if ($repo.private -and $global:GitHubToken -and $global:GitHubUser) {
+            $AuthUrl = $Url -replace 'https://', "https://$($global:GitHubUser):$($global:GitHubToken)@"
+        }
+        $GitNoPopupArgs = "-c credential.helper=`"`" -c credential.helper=store -c credential.interactive=never -c core.askPass=`"`" -c core.longpaths=true -c http.postBuffer=524288000 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60"
+
         if (Test-Path (Join-Path $TargetDir ".git")) {
             Write-Host "  Repository exists. Updating (git pull)..." -ForegroundColor Yellow
             Write-Log "Pulling latest changes for $Folder..." "INFO" -Console $false
             
-            $PullProcess = Start-Process -FilePath "git" -ArgumentList "-C `"$TargetDir`" pull --rebase" -NoNewWindow -Wait -PassThru
+            if ($AuthUrl -ne $Url) {
+                Start-Process -FilePath "git" -ArgumentList "-C `"$TargetDir`" remote set-url origin `"$AuthUrl`"" -NoNewWindow -Wait | Out-Null
+            }
+            $PullProcess = Start-Process -FilePath "git" -ArgumentList "$GitNoPopupArgs -C `"$TargetDir`" pull --rebase" -NoNewWindow -Wait -PassThru
+            if ($AuthUrl -ne $Url) {
+                Start-Process -FilePath "git" -ArgumentList "-C `"$TargetDir`" remote set-url origin `"$Url`"" -NoNewWindow -Wait | Out-Null
+            }
+
             if ($PullProcess.ExitCode -eq 0) {
                 Write-Log "Repository $Folder updated successfully." "SUCCESS"
                 Write-Host "  [OK] Pulled successfully." -ForegroundColor Green
@@ -1000,22 +1231,45 @@ function Sync-Repositories {
             Write-Host "  Cloning repository..." -ForegroundColor Yellow
             Write-Log "Cloning $Url to $TargetDir..." "INFO" -Console $false
 
-            $CloneUrl = $Url
-            if ($repo.private -and $global:GitHubToken -and $global:GitHubUser) {
-                $CloneUrl = $Url -replace 'https://', "https://$($global:GitHubUser):$($global:GitHubToken)@"
+            $CloneSuccess = $false
+            $errCode = -1
+            $lastGitErr = ""
+            for ($attempt = 1; $attempt -le 3; $attempt++) {
+                if (Test-Path $TargetDir) { Remove-Item $TargetDir -Recurse -Force -ErrorAction SilentlyContinue }
+                if ($attempt -gt 1) {
+                    Write-Host "  Reintentando clonacion de $Folder (Intento $attempt/3)..." -ForegroundColor Yellow
+                    Start-Sleep -Seconds 3
+                }
+                $gitErrFile = Join-Path $env:TEMP "git_clone_err_$PID.txt"
+                if (Test-Path $gitErrFile) { Remove-Item $gitErrFile -Force -ErrorAction SilentlyContinue }
+                $CloneProcess = Start-Process -FilePath "git" -ArgumentList "$GitNoPopupArgs clone `"$AuthUrl`" `"$TargetDir`"" -NoNewWindow -Wait -PassThru -RedirectStandardError $gitErrFile
+                $errCode = $CloneProcess.ExitCode
+                if (Test-Path $gitErrFile) {
+                    $rawErr = (Get-Content $gitErrFile -Raw -ErrorAction SilentlyContinue)
+                    if ($rawErr) {
+                        # Ocultar token en caso de que aparezca en la URL dentro del mensaje de error
+                        $lastGitErr = ($rawErr -replace 'https://[^@]+@', 'https://***@').Trim()
+                    }
+                    Remove-Item $gitErrFile -Force -ErrorAction SilentlyContinue
+                }
+                if ($errCode -eq 0) {
+                    $CloneSuccess = $true
+                    break
+                } else {
+                    Write-Log "Clone attempt $attempt/3 for $Folder exited with code $errCode. Details: $lastGitErr" "WARN" -Console $false
+                }
             }
 
-            $CloneProcess = Start-Process -FilePath "git" -ArgumentList "clone $CloneUrl `"$TargetDir`"" -NoNewWindow -Wait -PassThru
-            if ($CloneProcess.ExitCode -eq 0) {
-                if ($CloneUrl -ne $Url) {
+            if ($CloneSuccess) {
+                if ($AuthUrl -ne $Url) {
                     Start-Process -FilePath "git" -ArgumentList "-C `"$TargetDir`" remote set-url origin `"$Url`"" -NoNewWindow -Wait | Out-Null
                 }
                 Write-Log "Repository $Folder cloned successfully." "SUCCESS"
                 Write-Host "  [OK] Cloned successfully." -ForegroundColor Green
             } else {
-                $errCode = $CloneProcess.ExitCode
-                Write-Log "Failed to clone repository $Folder from $Url (Exit code: $errCode)" "ERROR"
-                Write-Host "  [ERROR] Clone failed with exit code $errCode" -ForegroundColor Red
+                $detailMsg = if ($lastGitErr) { " | Git: $lastGitErr" } else { "" }
+                Write-Log "Failed to clone repository $Folder from $Url (Exit code: $errCode)$detailMsg" "ERROR"
+                Write-Host "  [ERROR] Clone failed with exit code $errCode$detailMsg" -ForegroundColor Red
             }
         }
     }
@@ -1050,7 +1304,7 @@ function Open-ManualLinks {
         "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
     )
     foreach ($cp in $CandidatePaths) {
-        if (Test-Path $cp) {
+        if (Test-Path -LiteralPath $cp -ErrorAction SilentlyContinue) {
             $ChromePath = $cp
             break
         }
@@ -1059,7 +1313,7 @@ function Open-ManualLinks {
         $ChromePath = "chrome"
     }
 
-    # Si es interactivo y Chrome esta instalado, permitir iniciar sesion en Google antes de abrir las descargas
+    # Si es interactivo (Paso 5 manual) y Chrome esta instalado, permitir iniciar sesion en Google antes de abrir las descargas
     if (-not $Script:NonInteractive -and $ChromePath) {
         Write-Host "`n[Aviso Navegador]" -ForegroundColor Cyan
         Write-Host "Se van a abrir $(($Links.Count)) enlaces de descarga manual." -ForegroundColor Yellow
@@ -1067,7 +1321,7 @@ function Open-ManualLinks {
         $LoginChoice = Read-Host
         if ($LoginChoice -ne "N" -and $LoginChoice -ne "n") {
             Write-Host "Abriendo Chrome. Inicia sesion o configura tu perfil de Google..." -ForegroundColor Green
-            Start-Process -FilePath $ChromePath
+            Start-Process -FilePath $ChromePath -ArgumentList "--no-first-run --no-default-browser-check"
             Write-Host "`nCuando hayas iniciado sesion en Chrome, presiona cualquier tecla aqui para abrir las descargas..." -ForegroundColor Yellow
             [void][System.Console]::ReadKey($true)
         }
@@ -1075,19 +1329,40 @@ function Open-ManualLinks {
 
     Write-Log "Opening $(($Links.Count)) manual download link(s)..." "INFO"
 
-    foreach ($item in $Links) {
-        $Name = $item.name
-        $Url = $item.url
+    if ($ChromePath) {
+        # Asegurar archivo centinela 'First Run' de Chrome para que no bloquee las pestanas con el asistente de bienvenida en un PC virgen
+        try {
+            $ChromeUserData = Join-Path $env:LOCALAPPDATA "Google\Chrome\User Data"
+            if (-not (Test-Path $ChromeUserData)) {
+                New-Item -Path $ChromeUserData -ItemType Directory -Force | Out-Null
+            }
+            $FirstRunFile = Join-Path $ChromeUserData "First Run"
+            if (-not (Test-Path $FirstRunFile)) {
+                New-Item -Path $FirstRunFile -ItemType File -Force | Out-Null
+            }
+        } catch {}
 
-        Write-Host "Opening: $Name ($Url)" -ForegroundColor Cyan
-        Write-Log "Opened manual link: $Name ($Url)" "INFO" -Console $false
-
-        if ($ChromePath) {
-            Start-Process -FilePath $ChromePath -ArgumentList "`"$Url`""
-        } else {
-            Start-Process $Url
+        $QuotedUrls = @()
+        foreach ($item in $Links) {
+            $Name = $item.name
+            $Url  = $item.url
+            Write-Host "Opening: $Name ($Url)" -ForegroundColor Cyan
+            Write-Log "Opened manual link: $Name ($Url)" "INFO" -Console $false
+            $QuotedUrls += "`"$Url`""
         }
-        Start-Sleep -Milliseconds 600
+
+        # Abrir todas las URLs en una sola invocacion de Chrome para evitar que el bloqueo de inicio descarte pestanas
+        $ChromeArgs = "--no-first-run --no-default-browser-check --new-window " + ($QuotedUrls -join " ")
+        Start-Process -FilePath $ChromePath -ArgumentList $ChromeArgs
+    } else {
+        foreach ($item in $Links) {
+            $Name = $item.name
+            $Url  = $item.url
+            Write-Host "Opening: $Name ($Url)" -ForegroundColor Cyan
+            Write-Log "Opened manual link: $Name ($Url)" "INFO" -Console $false
+            Start-Process $Url
+            Start-Sleep -Milliseconds 600
+        }
     }
 
     Write-StepEnd "PASO 4 - ENLACES DE DESCARGA MANUAL ($global:ProfileName)"
@@ -1232,16 +1507,24 @@ function Save-SetupState {
         [string]$LogFile = $global:LogFile
     )
     $State = @{
-        Profile = $Profile
-        Step    = $NextStep
-        LogFile = $LogFile
+        Profile       = $Profile
+        Step          = $NextStep
+        LogFile       = $LogFile
+        GitHubUser    = $global:GitHubUser
+        GitHubToken   = $global:GitHubToken
+        KeepAutoLogon = [bool]$global:KeepAutoLogon
+    }
+    if (Test-Path $StateFile) {
+        (Get-Item $StateFile -Force).Attributes = "Normal"
     }
     $State | ConvertTo-Json | Set-Content $StateFile -Force
-    (Get-Item $StateFile).Attributes = "Hidden"
+    (Get-Item $StateFile -Force).Attributes = "Hidden"
 }
 
 function Remove-SetupState {
-    if (Test-Path $StateFile) { Remove-Item $StateFile -Force }
+    if (Test-Path $StateFile -ErrorAction SilentlyContinue) {
+        Remove-Item $StateFile -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Enable-AutoLogon {
@@ -1287,6 +1570,7 @@ function Enable-AutoLogon {
 }
 
 function Disable-AutoLogon {
+    $errBefore = $Error.Count
     $WinLogonKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
     Set-ItemProperty -Path $WinLogonKey -Name "AutoAdminLogon" -Value "0" -Type String
     if (Get-ItemProperty -Path $WinLogonKey -Name "ForceAutoLogon" -ErrorAction SilentlyContinue) {
@@ -1301,6 +1585,7 @@ function Disable-AutoLogon {
     if (Get-ItemProperty -Path $PersKey -Name "NoLockScreen" -ErrorAction SilentlyContinue) {
         Remove-ItemProperty -Path $PersKey -Name "NoLockScreen" -ErrorAction SilentlyContinue
     }
+    while ($Error.Count -gt $errBefore) { $Error.RemoveAt(0) }
     Write-Log "Auto-Logon de Windows desactivado y credenciales limpiadas." "INFO"
 }
 
@@ -1308,23 +1593,26 @@ function Set-RegistryAutoRun {
     $LauncherPath = Join-Path $RootDir "Run-Setup.bat"
     
     # 1. Tarea programada con privilegios maximos (omite ventana UAC completamente tras el reinicio)
-    try {
-        $TaskCmd = "schtasks /Create /TN `"$RegName`" /TR `"`"$LauncherPath`"`" /SC ONLOGON /RL HIGHEST /F"
-        cmd.exe /c $TaskCmd 2>$null | Out-Null
+    $TaskCmd = "schtasks /Create /TN `"$RegName`" /TR `"`"$LauncherPath`"`" /SC ONLOGON /RL HIGHEST /F"
+    cmd.exe /c $TaskCmd 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
         Write-Log "Tarea programada de autoarranque elevada ($RegName) registrada con exito." "INFO"
-    } catch {
-        # Fallback al registro clasico
+    } else {
+        # Fallback al registro clasico si schtasks devuelve error
         Set-ItemProperty -Path $RegPath -Name $RegName -Value "`"$LauncherPath`"" -ErrorAction SilentlyContinue
+        Write-Log "Autoarranque registrado en HKCU Run (fallback)." "INFO"
     }
 }
 
 function Remove-RegistryAutoRun {
+    $errBefore = $Error.Count
     try {
         cmd.exe /c "schtasks /Delete /TN `"$RegName`" /F" 2>$null | Out-Null
     } catch {}
     if (Get-ItemProperty -Path $RegPath -Name $RegName -ErrorAction SilentlyContinue) {
         Remove-ItemProperty -Path $RegPath -Name $RegName -ErrorAction SilentlyContinue
     }
+    while ($Error.Count -gt $errBefore) { $Error.RemoveAt(0) }
 }
 
 function Resume-AutoSequence {
@@ -1334,6 +1622,15 @@ function Resume-AutoSequence {
     $global:ProfileName = $State.Profile
     $global:Suffix = if ($global:ProfileName -eq "OMAR" -or $global:ProfileName -eq "CONTROL") { "omar" } else { "designer_basico" }
     
+    # Restaurar credenciales de GitHub y preferencia de AutoLogon validadas en el Paso 0
+    if ($State.GitHubUser -and $State.GitHubToken) {
+        $global:GitHubUser  = $State.GitHubUser
+        $global:GitHubToken = $State.GitHubToken
+    }
+    if ($null -ne $State.KeepAutoLogon) {
+        $global:KeepAutoLogon = [bool]$State.KeepAutoLogon
+    }
+
     # Reload Profile Context
     $global:InstallJson = Join-Path $ScriptDir "install_$global:Suffix.json"
     $global:ReposJson   = Join-Path $ScriptDir "repos_$global:Suffix.json"
@@ -1343,7 +1640,7 @@ function Resume-AutoSequence {
     if ($State.LogFile) {
         $global:LogFile = $State.LogFile
     } else {
-        $global:LogFile = New-RunLogFile -Tag "ALL"
+        Initialize-RunLog -Tag "ALL"
     }
     
     Write-Log "REANUDANDO SECUENCIA AUTOMATICA (v$global:AppVersion) | PERFIL: $global:ProfileName | PASO: $($State.Step)" "HEADER"
@@ -1382,8 +1679,13 @@ function Resume-AutoSequence {
             Sync-Repositories
             Open-ManualLinks
             Remove-RegistryAutoRun
-            Disable-AutoLogon
+            if ($global:KeepAutoLogon) {
+                Write-Log "Auto-Logon mantenido activo permanentemente por eleccion del usuario." "INFO"
+            } else {
+                Disable-AutoLogon
+            }
             Remove-SetupState
+            Sync-PowerShellErrors -Context "Final"
             Write-Log "SECUENCIA AUTOMATICA COMPLETADA CON EXITO" "STEP_DONE"
             Write-Host "`nALL STEPS FINISHED SUCCESSFULLY." -ForegroundColor Green
             Show-CompletionDialog
@@ -1397,11 +1699,13 @@ function Resume-AutoSequence {
 # ==========================================
 
 Ensure-Admin
-Write-Log "PowerShell security protocols initialized: $([Net.ServicePointManager]::SecurityProtocol)" "INFO" -Console $false
 
 # 1. CHECK FOR RESUME STATE
 $State = Get-SetupState
 if ($State) {
+    if ($State.LogFile) {
+        $global:LogFile = $State.LogFile
+    }
     Write-Host "`n========================================================" -ForegroundColor Cyan
     Write-Host " SECUENCIA PREVIA DETECTADA (SIGUIENTE: PASO $($State.Step))" -ForegroundColor Cyan
     Write-Host "========================================================" -ForegroundColor Cyan
@@ -1428,16 +1732,14 @@ if ($State) {
     
     if ($Cancel) {
         Write-Host "`n[CANCELADO] Secuencia previa descartada. Iniciando desde cero..." -ForegroundColor Green
+        $global:LogFile = $null
         Remove-SetupState
         Remove-RegistryAutoRun
         Disable-AutoLogon
         Start-Sleep -Seconds 1
-        Log-SystemInfo
     } else {
         Resume-AutoSequence -State $State
     }
-} else {
-    Log-SystemInfo
 }
 
 # 2. PROFILE CONFIGURATION
@@ -1463,27 +1765,27 @@ if ($Step) {
     $Script:NonInteractive = $true
     switch ($Step) {
         "1" { 
-            $global:LogFile = New-RunLogFile -Tag "winupdate"
+            Initialize-RunLog -Tag "winupdate"
             Install-WindowsUpdates 
         }
         "2" { 
-            $global:LogFile = New-RunLogFile -Tag "tweaks"
+            Initialize-RunLog -Tag "tweaks"
             Invoke-WinUtilTweaks 
         }
         "3" { 
-            $global:LogFile = New-RunLogFile -Tag "install"
+            Initialize-RunLog -Tag "install"
             Install-Software 
         }
         "4" { 
-            $global:LogFile = New-RunLogFile -Tag "repos"
+            Initialize-RunLog -Tag "repos"
             Sync-Repositories 
         }
         "5" { 
-            $global:LogFile = New-RunLogFile -Tag "links"
+            Initialize-RunLog -Tag "links"
             Open-ManualLinks 
         }
         "ALL" { 
-            $global:LogFile = New-RunLogFile -Tag "ALL"
+            Initialize-RunLog -Tag "ALL"
             Install-WindowsUpdates
             Invoke-WinUtilTweaks
             Install-Software
@@ -1514,29 +1816,32 @@ do {
 
     switch ($Selection) {
         "1" { 
-            $global:LogFile = New-RunLogFile -Tag "winupdate"
+            Initialize-RunLog -Tag "winupdate"
             Install-WindowsUpdates 
         }
         "2" { 
-            $global:LogFile = New-RunLogFile -Tag "tweaks"
+            Initialize-RunLog -Tag "tweaks"
             Invoke-WinUtilTweaks 
         }
         "3" { 
-            $global:LogFile = New-RunLogFile -Tag "install"
+            Initialize-RunLog -Tag "install"
             Install-Software 
         }
         "4" { 
-            $global:LogFile = New-RunLogFile -Tag "repos"
+            Initialize-RunLog -Tag "repos"
             Sync-Repositories 
         }
         "5" { 
-            $global:LogFile = New-RunLogFile -Tag "links"
+            Initialize-RunLog -Tag "links"
             Open-ManualLinks 
         }
         "6" { 
             $Script:NonInteractive = $true
             Write-Host "`n[Modo Secuencia Automatica]" -ForegroundColor Cyan
             $Reboot = Read-Host "Deseas REINICIAR entre cada paso? (Recomendado para instalaciones limpias) Y/N [Default: Y]"
+            
+            # Inicializar el archivo de log unico para toda la secuencia antes de pedir credenciales
+            Initialize-RunLog -Tag "ALL"
             
             if ($Reboot -ne "N" -and $Reboot -ne "n") {
                 Check-GitToken
@@ -1551,11 +1856,17 @@ do {
                     $UserPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
                 }
                 
+                $KeepAL = Read-Host "Deseas MANTENER el inicio de sesion automatico (Auto-Logon) activo permanentemente al terminar todo el proceso? (Y/N) [Default: N]"
+                $global:KeepAutoLogon = ($KeepAL -eq "Y" -or $KeepAL -eq "y")
+                
                 Write-Host "Configurando inicio de sesion automatico (AutoLogon)..." -ForegroundColor Yellow
                 Enable-AutoLogon -Username $env:USERNAME -Password $UserPass
+                if ($global:KeepAutoLogon) {
+                    Write-Log "Preferencia de Auto-Logon al finalizar: MANTENER ACTIVO permanentemente." "INFO"
+                } else {
+                    Write-Log "Preferencia de Auto-Logon al finalizar: DESACTIVAR al terminar el proceso." "INFO"
+                }
                 
-                # Generar archivo de log dedicado para todo el proceso completo (ALL)
-                $global:LogFile = New-RunLogFile -Tag "ALL"
                 Write-Log "INICIALIZANDO SECUENCIA AUTOMATICA (ALL) v$global:AppVersion - $global:ProfileName" "HEADER"
                 Write-Log "MAQUINA: $env:COMPUTERNAME | FECHA: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" "INFO"
                 Write-Log "LOG: $global:LogFile" "INFO"
@@ -1566,15 +1877,17 @@ do {
                 
                 # Iniciar directamente el Paso 1
                 $InitialState = [PSCustomObject]@{
-                    Profile = $global:ProfileName
-                    Step    = 1
-                    LogFile = $global:LogFile
+                    Profile       = $global:ProfileName
+                    Step          = 1
+                    LogFile       = $global:LogFile
+                    GitHubUser    = $global:GitHubUser
+                    GitHubToken   = $global:GitHubToken
+                    KeepAutoLogon = $global:KeepAutoLogon
                 }
                 Resume-AutoSequence -State $InitialState
             } else {
                 # Ejecucion secuencial sin reinicios
                 Check-GitToken
-                $global:LogFile = New-RunLogFile -Tag "ALL"
                 Write-Log "INICIALIZANDO EJECUCION SECUENCIAL SIN REINICIOS (ALL) v$global:AppVersion - $global:ProfileName" "HEADER"
                 Install-WindowsUpdates
                 Invoke-WinUtilTweaks

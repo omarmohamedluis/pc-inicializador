@@ -14,7 +14,43 @@
                     "PackageIdentifier": "Famatech.AdvancedIPScanner"
                 },
                 {
+                    "PackageIdentifier": "Google.Antigravity"
+                },
+                {
+                    "PackageIdentifier": "Google.AntigravityIDE"
+                },
+                {
+                    "PackageIdentifier": "Gyan.FFmpeg"
+                },
+                {
+                    "PackageIdentifier": "NDI.NDITools"
+                },
+                {
+                    "PackageIdentifier": "OpenJS.NodeJS"
+                },
+                {
+                    "PackageIdentifier": "NagleCode.PacketSender"
+                },
+                {
+                    "PackageIdentifier": "Microsoft.PowerToys"
+                },
+                {
+                    "PackageIdentifier": "QL-Win.QuickLook"
+                },
+                {
+                    "PackageIdentifier": "OpenBoxLab.RaiDrive"
+                },
+                {
+                    "PackageIdentifier": "RaspberryPiFoundation.RaspberryPiImager"
+                },
+                {
                     "PackageIdentifier": "RealVNC.VNCConnect.Viewer"
+                },
+                {
+                    "PackageIdentifier": "Cockos.REAPER"
+                },
+                {
+                    "PackageIdentifier": "WiresharkFoundation.Wireshark"
                 },
                 {
                     "PackageIdentifier": "9NR4D7PWXBFR"
@@ -26,7 +62,13 @@
                     "PackageIdentifier": "Google.Chrome"
                 },
                 {
+                    "PackageIdentifier": "Bitfocus.Companion"
+                },
+                {
                     "PackageIdentifier": "Git.Git"
+                },
+                {
+                    "PackageIdentifier": "Python.Python.3.12"
                 },
                 {
                     "PackageIdentifier": "VideoLAN.VLC"

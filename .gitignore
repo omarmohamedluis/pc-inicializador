@@ -4,3 +4,10 @@ logs/
 .setup_state
 src/.setup_state
 
+# Tokens y credenciales de GitHub
+github_token.txt
+src/github_token.txt
+github_token.enc
+src/github_token.enc
+*.enc
+

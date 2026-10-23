@@ -39,6 +39,9 @@
                 },
                 {
                     "PackageIdentifier": "Microsoft.PowerToys"
+                },
+                {
+                    "PackageIdentifier": "Git.Git"
                 }
             ]
         }

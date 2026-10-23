@@ -39,11 +39,11 @@ archivar Ctrl+Shift+A
     ✔ @ask el auto log on no está funcionando (restaurado Enable-AutoLogon y prompt de contrasena en opcion 6) @done(26-10-23 15:50)
     ✔ @ask en el paso 4, me ha vuelto a pedir mi contraseña de github, ¿es la de github o la del token? si es la del token, deberia decir token, no github, y además, he metido la del token y me ha dado error. @done(26-10-23 16:03)
     ✔ @do los scripts para el virtual usb, sean un flip entre host y vm sin clonar nada (creado Flip-USB-Virtual) @done(26-10-23 16:07)
-    ☐ @ask saltan MAZO errores en consola de tipo caracter no valido y cosas así, puedes asegurarte porfa que podemos capturar esos logs?
-    ☐ @ask algo ha fallado de la herrameinta de tweaks, creo que no isntalo nada, algo falló...
-    ☐ @ask reducir los instaladores de winget aún mas, los que funcionen los metemos en "reactivate" y los quitamos de la lista, pa no tardar la vida
-    ☐ @ask github me pide las credenciales en el paso "0" y en el paso "4", tendria que pedirlas solo en el paso 0, y si son extrictamente necesarias, que no las pida en el paso "0" y solo las pida en el paso 4
-    ☐ @ask reducir los repositorios clonados a solo uno que sea rápido, y los otros apuntarlos en reactivate para el futuro
-    ☐ @ask en el ultimo log, el paso 4 lo he cerrado yo sin querer, por eso va a aparecer dos veces xD
-    ☐ @ask ¿porque se me ha instlado un software de github? y se me ha abierto en el paso 4? al cerrar el popup, (que no me habia salido nunca) ha cuajado la movida... ¿no es suficiente con los tokens? o no los estamos pasando correctamente o algo? el mambo es con los repos privados cre
-    
+    ✔ @ask saltan MAZO errores en consola de tipo caracter no valido y cosas así, puedes asegurarte porfa que podemos capturar esos logs? (corregidos 7 bytes de control 0x07/0x08 en rutas y añadido Sync-PowerShellErrors + trap global) @done(26-10-23 17:20)
+    ✔ @ask algo ha fallado de la herrameinta de tweaks, creo que no isntalo nada, algo falló... (fallaba descarga desde christitus.com en la VM; cambiado a release directo de GitHub + copia local offline src/winutil.ps1 en el USB) @done(26-10-23 17:20)
+    ✔ @ask reducir los instaladores de winget aún mas, los que funcionen los metemos en "reactivate" y los quitamos de la lista, pa no tardar la vida (dejados solo Chrome y Git en install_omar.json; los otros 6 verificados pasados a REACTIVATE.todo) @done(26-10-23 17:20)
+    ✔ @ask github me pide las credenciales en el paso "0" y en el paso "4", tendria que pedirlas solo en el paso 0, y si son extrictamente necesarias, que no las pida en el paso "0" y solo las pida en el paso 4 (persistido en .setup_state desde Paso 0 para que el Paso 4 sea 100% automatico sin volver a preguntar) @done(26-10-23 17:20)
+    ✔ @ask reducir los repositorios clonados a solo uno que sea rápido, y los otros apuntarlos en reactivate para el futuro (dejado solo windows_tools de 3s en repos_omar.json y creado repos_omar.full.json + REACTIVATE.todo) @done(26-10-23 17:20)
+    ✔ @ask en el ultimo log, el paso 4 lo he cerrado yo sin querer, por eso va a aparecer dos veces xD @done(26-10-23 17:20)
+    ✔ @ask ¿porque se me ha instlado un software de github? y se me ha abierto en el paso 4? al cerrar el popup, (que no me habia salido nunca) ha cuajado la movida... ¿no es suficiente con los tokens? o no los estamos pasando correctamente o algo? el mambo es con los repos privados cre (era Git Credential Manager incluido en Git.Git; desactivado popup con GCM_INTERACTIVE=never y credential.helper=store en Paso 4) @done(26-10-23 17:20)
+    ✔ @do al principio del poryecto, me pregunte, antes de empezar a hacer cosas, si querre mantener el auto-logon despues de termina el proceso, hay ordenadores donde lo dejo, porque solo tengo acceso yo. Y o N (añadida pregunta en Paso 0 y persistido KeepAutoLogon en .setup_state para respetar la decision al terminar el Paso 4) @done(26-10-23 20:50)

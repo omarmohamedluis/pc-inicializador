@@ -1,0 +1,35 @@
+{
+    "description": "Repositorios para Perfil Omar (Lista Completa)",
+    "repositories": [
+        {
+            "url": "https://github.com/omarmohamedluis/omi_reaper_lirycs.git",
+            "name": "omi_reaper_lirycs",
+            "private": true
+        },
+        {
+            "url": "https://github.com/omarmohamedluis/acciones-reaper.git",
+            "name": "acciones-reaper",
+            "private": true
+        },
+        {
+            "url": "https://github.com/omarmohamedluis/agent.git",
+            "name": "agent",
+            "private": true
+        },
+        {
+            "url": "https://github.com/omarmohamedluis/windows_tools.git",
+            "name": "windows_tools",
+            "private": true
+        },
+        {
+            "url": "https://github.com/omarmohamedluis/companionconfigs.git",
+            "name": "companionconfigs",
+            "private": true
+        },
+        {
+            "url": "https://github.com/omarmohamedluis/d3-plugins.git",
+            "name": "d3-plugins",
+            "private": true
+        }
+    ]
+}

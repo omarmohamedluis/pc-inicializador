@@ -42,7 +42,7 @@ function Test-GitHubToken {
     param([string]$Token)
     try {
         $headers = @{
-            "Authorization" = "token $Token"
+            "Authorization" = "Bearer $Token"
             "User-Agent"    = "PC-Inicializador-TokenSetup"
         }
         $response = Invoke-RestMethod -Uri "https://api.github.com/user" -Headers $headers -Method Get -TimeoutSec 10 -ErrorAction Stop

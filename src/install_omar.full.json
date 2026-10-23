@@ -17,6 +17,9 @@
                     "PackageIdentifier": "Google.Antigravity"
                 },
                 {
+                    "PackageIdentifier": "Google.AntigravityIDE"
+                },
+                {
                     "PackageIdentifier": "Gyan.FFmpeg"
                 },
                 {

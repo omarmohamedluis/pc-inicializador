@@ -1,6 +1,6 @@
 # PC Inicializador - Automatización de instalación para Windows
 
-Una suite automatizada basada en **PowerShell** y **Batch** para inicializar un PC con Windows 10/11 limpio desde cero, optimizando el sistema operativo, instalando software esencial y clonando repositorios privados de GitHub.
+Una suite automatizada basada en **PowerShell** y **Batch** para inicializar un PC con Windows 10/11 limpio desde cero, optimizando el sistema operativo, instalando software esencial y clonando repositorios privados de GitHub de forma desatendida.
 
 **Flexible y modular:** Todo se gestiona mediante perfiles y archivos JSON configurables dentro de la carpeta `src/`. No requiere modificar el código.
 
@@ -40,51 +40,34 @@ Antes de ejecutar, verifica que tu PC cumpla con estos requisitos:
 
 ---
 
-## 🔄 Fases de la Secuencia de Instalación
+## 🔄 Fases de la Secuencia de Instalación (Opción 6 - ALL)
 
-El inicializador divide el proceso en 4 grandes etapas:
+El inicializador divide el proceso en 4 etapas con soporte de **Auto-Logon** y **Tarea Programada elevada (`HIGHEST`)** para reiniciar entre pasos sin pedir contraseña de Windows ni confirmación UAC:
 
-1. **Paso 1: Windows Updates:**
+1. **Paso 0 (Preparación Inicial):**
+   - Valida o descifra tu token de GitHub (`src/github_token.enc` o `src/github_token.txt`) una única vez al principio y lo persiste para el Paso 4.
+   - Configura temporalmente el Auto-Logon de Windows para los reinicios intermedios.
+2. **Paso 1: Windows Updates:**
    - Busca e instala actualizaciones de Windows con `PSWindowsUpdate` (utilizando el flag `-IgnoreReboot` para un control total del ciclo de reinicio).
-2. **Paso 2: Windows Tweaks, Debloat & Winget Setup (WinUtil):**
+3. **Paso 2: Windows Tweaks, Debloat & Winget Setup (WinUtil):**
    - Configura y refresca las fuentes de Winget y añade el bypass de certificados Store.
-   - Aplica las directivas recomendadas de Chris Titus (modo *Solo Seguridad*): bloquea drivers por Windows Update, aplaza updates mayores 365 días y parches de calidad 4 días para evitar actualizaciones Día-0 defectuosas, y desactiva reinicios automáticos con usuarios conectados.
-   - Ejecuta CTT WinUtil en modo silencioso (*headless*) aplicando tu configuración de `src/winutil_config.json` (eliminación de telemetría, Copilot/AI, OneDrive, optimizaciones de explorador, activación de .NET 3.5, etc.).
-3. **Paso 3: Instalar Software & Extensiones:**
+   - Aplica las directivas recomendadas de Chris Titus (modo *Solo Seguridad*): bloquea drivers por Windows Update, aplaza updates mayores 365 días y parches de calidad 4 días, y desactiva reinicios automáticos con usuarios conectados.
+   - Ejecuta CTT WinUtil en modo silencioso (*headless*) aplicando tu configuración de `src/winutil_config.json` (descargando desde el release oficial de GitHub con respaldo offline automático en `src/winutil.ps1`).
+4. **Paso 3: Instalar Software & Extensiones:**
    - Instala las aplicaciones de Winget definidas en `install_<perfil>.json`.
-   - Instala automáticamente las extensiones de Antigravity IDE / VS Code definidas en `src/extensions.json` (Todo+, Python, clangd, etc.).
-4. **Paso 4: Repositorios Git + Enlaces Manuales + Fin:**
-   - Clona o actualiza los repositorios de GitHub en el Escritorio (`%USERPROFILE%\Desktop\repositorios`).
-   - Abre en el navegador predeterminado las páginas de descargas manuales (drivers de audio/red, software propietario sin Winget).
-   - Abre la ventana gráfica **"¡COMPLETADO CON ÉXITO!"** con acceso directo para inspeccionar el archivo de log.
-
----
-
-## 📦 Configuración por Perfiles
-
-Dentro de `src/`, cada perfil tiene sus propios archivos de configuración:
-
-### Perfil Designer Básico
-- `src/install_designer_basico.json`: Apps de Winget (Creative Cloud, Antigravity, QuickLook, RaiDrive, etc.).
-- `src/repos_designer_basico.json`: Repositorios para Designer Básico (`d3_player`, `windows_tools`, etc.).
-- `src/links_designer_basico.json`: Links de descarga manual (Notch LC, Timecode Monitor, FreeFileSync, etc.).
-
-### Perfil Omar
-- `src/install_omar.json`: Apps de Winget (Companion, Reaper, Node.js, Python, Packet Sender, NDI, etc.).
-- `src/repos_omar.json`: Repositorios para Omar (`omi_reaper_lirycs`, `acciones-reaper`, `agent`, etc.).
-- `src/links_omar.json`: Links de descarga manual (Dante Controller, Lightware, Netgear Engage, X32 Edit, etc.).
-
-### Configuraciones Comunes:
-- `src/extensions.json`: Extensiones de editor para ambos perfiles.
-- `src/winutil_config.json`: Tweaks y debloat de Windows comunes.
+   - Instala automáticamente las extensiones de Antigravity IDE / VS Code definidas en `src/extensions.json`.
+5. **Paso 4: Repositorios Git + Enlaces Manuales + Fin:**
+   - Clona o actualiza los repositorios de GitHub en el Escritorio (`%USERPROFILE%\Desktop\repositorios`) de forma 100% silenciosa (sin popups de *Git Credential Manager*).
+   - Abre en Google Chrome las páginas de descargas manuales (permitiendo iniciar sesión en Google previamente).
+   - Limpia las credenciales de Auto-Logon y la tarea de autoarranque, y muestra la ventana gráfica de finalización con botones directos para **"Ver Log"** y **"Ver Errores"** (si hubo algún aviso).
 
 ---
 
 ## 🔐 Repositorios Privados y GitHub Token (PAT)
 
-Si tienes repositorios privados, el script te pedirá un **GitHub Personal Access Token (PAT)** si no encuentra credenciales guardadas en Windows:
-- Se almacena de forma segura en: `C:\Users\{Usuario}\.git-credentials` mediante `git config --global credential.helper store`.
-- Solo te lo pedirá una vez.
+Puedes preconfigurar tu token en el USB ejecutando `helpers\Configurar-Token-GitHub.bat` (que invoca `src\Set-GitHubToken.ps1`):
+- **Opción 1 (Recomendada - Cifrado AES-256):** Genera `src/github_token.enc` protegido con una contraseña maestra corta que solo tendrás que introducir en el Paso 0.
+- **Opción 2 (Texto plano 100% silencioso):** Genera `src/github_token.txt` para no hacer ninguna pregunta.
 
 ---
 
@@ -92,23 +75,26 @@ Si tienes repositorios privados, el script te pedirá un **GitHub Personal Acces
 
 ```text
 pc-inicializador/
-├── Run-Setup.bat                  (Lanzador principal con elevación UAC)
-├── README.MD                      (Documentación del sistema)
-├── TODO                           (Hoja de ruta personal de tareas)
-├── .gitignore                     (Ignora install.log y archivos temporales)
-├── install.log                    (Registro de eventos generado en ejecución)
+├── Run-Setup.bat                       (Lanzador principal con elevación UAC)
+├── README.MD                           (Documentación del sistema)
+├── .gitignore                          (Ignora logs/, estados y tokens)
+├── logs/                               (Registros detallados y logs de errores por sesión)
+├── helpers/
+│   ├── Configurar-Token-GitHub.bat     (Asistente para cifrar el PAT de GitHub en el USB)
+│   ├── Flip-USB-Virtual.bat / .ps1     (Conmutador en caliente del VHDX entre Host y VM Hyper-V)
+│   ├── USB_VIRTUAL.md                  (Guía del disco virtual USB en Hyper-V)
+│   ├── REACTIVATE.todo                 (Lista maestra de elementos a reactivar para producción)
+│   └── TODO                            (Historial de tareas y mejoras)
 └── src/
-    ├── Setup-PC.ps1               (Motor orquestador de PowerShell)
-    ├── extensions.json            (Lista común de extensiones de IDE)
-    ├── winutil_config.json        (Configuración de tweaks de Windows)
-    ├── install_omar.json          (Apps Winget - Perfil Omar)
-    ├── install_designer_basico.json (Apps Winget - Perfil Designer)
-    ├── repos_omar.json            (Repos Git - Perfil Omar)
-    ├── repos_designer_basico.json (Repos Git - Perfil Designer)
-    ├── links_omar.json            (Links manuales - Perfil Omar)
-    └── links_designer_basico.json (Links manuales - Perfil Designer)
+    ├── Setup-PC.ps1                    (Motor orquestador principal de PowerShell)
+    ├── Set-GitHubToken.ps1             (Cifrador AES-256 del token de GitHub)
+    ├── winutil.ps1                     (Copia local de respaldo de CTT WinUtil)
+    ├── extensions.json                 (Lista común de extensiones de IDE)
+    ├── winutil_config.json / .full.json(Configuración de tweaks de Windows)
+    ├── install_omar.json / .full.json  (Apps Winget - Perfil Omar)
+    ├── install_designer_basico.json    (Apps Winget - Perfil Designer)
+    ├── repos_omar.json / .full.json    (Repos Git - Perfil Omar)
+    ├── repos_designer_basico.json      (Repos Git - Perfil Designer)
+    ├── links_omar.json                 (Links manuales - Perfil Omar)
+    └── links_designer_basico.json      (Links manuales - Perfil Designer)
 ```
-
-## 📝 Logs
-
-Todos los eventos se registran en tiempo real en `install.log` en la raíz del proyecto. Si algún paquete o repositorio falla, consulta este archivo para ver el detalle y códigos de error.
